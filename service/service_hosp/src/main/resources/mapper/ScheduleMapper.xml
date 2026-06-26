@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yygh.hosp.mapper.ScheduleMapper">
+
+    <select id="selectByHoscodeAndHosScheduleId" resultType="com.yygh.model.hosp.Schedule">
+        SELECT * FROM schedule WHERE hoscode = #{hoscode} AND hos_schedule_id = #{hosScheduleId} AND is_deleted = 0
+    </select>
+
+    <select id="selectByHoscodeAndDepcodeAndWorkDate" resultType="com.yygh.model.hosp.Schedule">
+        SELECT * FROM schedule
+        WHERE hoscode = #{hoscode}
+        AND depcode = #{depcode}
+        AND work_date = #{workDate}
+        AND is_deleted = 0
+    </select>
+
+    <!-- 按医院编号和科室编号分组统计 -->
+    <select id="selectGroupByWorkDate" resultType="com.yygh.vo.hosp.BookingScheduleRuleVo">
+        SELECT work_date        AS workDate,
+               COUNT(*)         AS docCount,
+               SUM(reserved_number)  AS reservedNumber,
+               SUM(available_number) AS availableNumber
+        FROM schedule
+        WHERE hoscode = #{hoscode}
+          AND depcode = #{depcode}
+          AND is_deleted = 0
+        GROUP BY work_date
+        ORDER BY work_date DESC
+    </select>
+
+    <!-- 按医院编号、科室编号和指定日期列表分组统计 -->
+    <select id="selectGroupByWorkDateIn" resultType="com.yygh.vo.hosp.BookingScheduleRuleVo">
+        SELECT work_date        AS workDate,
+               COUNT(*)         AS docCount,
+               SUM(reserved_number)  AS reservedNumber,
+               SUM(available_number) AS availableNumber
+        FROM schedule
+        WHERE hoscode = #{hoscode}
+          AND depcode = #{depcode}
+          AND work_date IN
+          <foreach collection="dateList" item="date" open="(" separator="," close=")">
+              #{date}
+          </foreach>
+          AND is_deleted = 0
+        GROUP BY work_date
+    </select>
+
+</mapper>

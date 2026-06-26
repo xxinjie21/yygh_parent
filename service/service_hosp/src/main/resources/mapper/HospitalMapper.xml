@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yygh.hosp.mapper.HospitalMapper">
+
+    <select id="selectByHoscode" resultType="com.yygh.model.hosp.Hospital">
+        SELECT * FROM hospital WHERE hoscode = #{hoscode} AND is_deleted = 0
+    </select>
+
+    <select id="selectByHosnameLike" resultType="com.yygh.model.hosp.Hospital">
+        SELECT * FROM hospital WHERE hosname LIKE CONCAT('%', #{hosname}, '%') AND is_deleted = 0
+    </select>
+
+</mapper>
