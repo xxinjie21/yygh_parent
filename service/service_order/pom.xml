@@ -28,10 +28,11 @@
             <artifactId>service_user_client</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
+        <!-- 微信支付官方SDK APIv3 -->
         <dependency>
-            <groupId>com.github.wxpay</groupId>
-            <artifactId>wxpay-sdk</artifactId>
-            <version>0.0.3</version>
+            <groupId>com.github.wechatpay-apiv3</groupId>
+            <artifactId>wechatpay-java</artifactId>
+            <version>0.2.12</version>
         </dependency>
         <dependency>
             <groupId>org.redisson</groupId>

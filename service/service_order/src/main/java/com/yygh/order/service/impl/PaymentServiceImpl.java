@@ -90,6 +90,42 @@ public class PaymentServiceImpl extends ServiceImpl<PaymentInfoMapper, PaymentIn
         JSONObject result = HttpRequestHelper.sendRequest(reqMap, signInfoVo.getApiUrl() + "/order/updatePayStatus");
     }
 
+    /**
+     * 支付成功（APIv3回调，直接传transactionId）
+     * 与 paySuccess(String, Map) 逻辑一致，适配APIv3回调格式
+     */
+    @Override
+    public void paySuccessV3(String outTradeNo, String transactionId) {
+        // 1 根据订单编号得到支付记录
+        LambdaQueryWrapper<PaymentInfo> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(PaymentInfo::getOutTradeNo, outTradeNo);
+        queryWrapper.eq(PaymentInfo::getPaymentType, PaymentTypeEnum.WEIXIN.getStatus());
+        PaymentInfo paymentInfo = baseMapper.selectOne(queryWrapper);
+        // 幂等：已支付则跳过
+        if (PaymentStatusEnum.PAID.getStatus().equals(paymentInfo.getPaymentStatus())) {
+            return;
+        }
+        // 2 更新支付记录信息
+        paymentInfo.setPaymentStatus(PaymentStatusEnum.PAID.getStatus());
+        paymentInfo.setCallbackTime(new Date());
+        paymentInfo.setTradeNo(transactionId);
+        paymentInfo.setCallbackContent("APIv3回调: transactionId=" + transactionId);
+        baseMapper.updateById(paymentInfo);
+        // 3 更新订单信息
+        OrderInfo orderInfo = orderService.getById(paymentInfo.getOrderId());
+        orderInfo.setOrderStatus(OrderStatusEnum.PAID.getStatus());
+        orderService.updateById(orderInfo);
+        // 4 调用医院接口，更新订单支付信息
+        SignInfoVo signInfoVo = hospitalFeignClient.getSignInfoVo(orderInfo.getHoscode());
+        Map<String, Object> reqMap = new HashMap<>();
+        reqMap.put("hoscode", orderInfo.getHoscode());
+        reqMap.put("hosRecordId", orderInfo.getHosRecordId());
+        reqMap.put("timestamp", HttpRequestHelper.getTimestamp());
+        String sign = signInfoVo.getSignKey();
+        reqMap.put("sign", sign);
+        JSONObject result = HttpRequestHelper.sendRequest(reqMap, signInfoVo.getApiUrl() + "/order/updatePayStatus");
+    }
+
     //获取支付记录
     @Override
     public PaymentInfo getPaymentInfo(Long orderId, Integer paymentType) {
