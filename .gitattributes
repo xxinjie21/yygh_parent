@@ -1,0 +1,37 @@
+# 强制 GitHub 语言统计以 Java 为主语言
+# Maven POM
+pom.xml linguist-language=Java linguist-generated=false
+**/pom.xml linguist-language=Java linguist-generated=false
+
+# Spring Boot 配置文件 → 归类为 Java 附属
+*.properties linguist-language=Java linguist-vendored=false
+*.yml linguist-language=Java linguist-vendored=false
+*.yaml linguist-language=Java linguist-vendored=false
+
+# MyBatis Mapper XML
+**/mapper/*.xml linguist-language=Java linguist-vendored=false
+
+# Spring 配置 XML
+**/logback-spring.xml linguist-language=Java linguist-vendored=false
+
+# SQL 脚本 → 项目附属
+*.sql linguist-vendored
+
+# 项目文档
+*.md linguist-documentation
+
+# Gradle（如未来迁移）
+*.gradle linguist-language=Java linguist-vendored=false
+
+# 前端 / 静态资源（如存在）→ 不计入语言统计
+*.html linguist-vendored
+*.css linguist-vendored
+*.js linguist-vendored
+*.vue linguist-vendored
+*.json linguist-vendored
+
+# IDE 配置
+.idea/** linguist-vendored
+*.iml linguist-vendored
+*.iws linguist-vendored
+*.ipr linguist-vendored
