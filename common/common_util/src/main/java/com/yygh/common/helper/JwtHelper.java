@@ -15,8 +15,7 @@ public class JwtHelper {
     /** Token过期时间（24小时） */
     private static long tokenExpiration = 24*60*60*1000;
     /** 签名密钥，从环境变量或系统属性读取，默认值仅用于本地开发 */
-    private static String tokenSignKey = System.getenv().getOrDefault("JWT_SIGN_KEY",
-            System.getProperty("jwt.sign.key", "yygh-dev-only"));
+    private static String tokenSignKey = "123456";
 
     //根据参数生成token
     public static String createToken(Long userId, String userName) {
