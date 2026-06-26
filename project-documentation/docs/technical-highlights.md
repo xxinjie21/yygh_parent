@@ -6,7 +6,7 @@
 
 **项目名称**：电子挂号系统  
 **开发时间**：2026.03 - 2026.05  
-**技术架构**：Spring Boot、Spring Cloud Alibaba、Nacos、Gateway、MyBatis-Plus、MySQL、Redis、RabbitMQ、Seata、EasyExcel、JWT
+**技术架构**：Spring Boot 2.7.18、Spring Cloud 2021.0.9、Spring Cloud Alibaba 2021.0.6.1、Nacos、Gateway、MyBatis-Plus、MySQL、Redis、Sentinel、EasyExcel、JWT
 
 ---
 
@@ -18,13 +18,13 @@
 | 2 | JWT 认证与网关鉴权 | AuthGlobalFilter.java |
 | 3 | 分布式锁与原子操作 | OrderServiceImpl.java |
 | 4 | 微信支付集成 | WeixinServiceImpl.java |
-| 5 | RabbitMQ 异步消息处理 | SmsReceiver.java |
-| 6 | Redis 缓存策略 | UserInfoServiceImpl.java |
+| 5 | Feign 熔断降级与 Sentinel 流量控制 | HospitalFeignClientFallbackFactory.java |
+| 6 | Redis 缓存策略 | HospitalServiceImpl.java |
 | 7 | MyBatis-Plus 分页查询 | DictServiceImpl.java |
 | 8 | 异常统一处理 | GlobalExceptionHandler.java |
 | 9 | 接口幂等性设计 | PaymentServiceImpl.java |
 | 10 | EasyExcel 批量导入 | DictServiceImpl.java |
-| 11 | Seata AT 分布式事务 | OrderServiceImpl.java |
+| 11 | @RequiredArgsConstructor 构造函数注入 | OrderServiceImpl.java |
 | 12 | 缓存穿透防护 | ScheduleServiceImpl.java |
 
 ---
@@ -38,14 +38,19 @@
 采用 **Redis 预扣库存 + Redisson 分布式锁 + MySQL 乐观锁** 三层防护机制。
 
 ### 代码位置
-- **核心实现**：[OrderServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/atguigu/yygh/order/service/impl/OrderServiceImpl.java)
+- **核心实现**：[OrderServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/yygh/order/service/impl/OrderServiceImpl.java)
 
 ### 关键代码
 ```java
 // 使用 Redisson RAtomicLong 原子扣减号源
-String redisKey = "yygh:schedule:" + scheduleId;
+String redisKey = "schedule:" + scheduleOrderVo.getHosScheduleId() + ":availableNumber";
 RAtomicLong atomicLong = redissonClient.getAtomicLong(redisKey);
-boolean success = atomicLong.compareAndSet(expected, expected - 1);
+long afterDecrement = atomicLong.addAndGet(-1);
+if (afterDecrement < 0) {
+    // 号源不足，回退
+    atomicLong.addAndGet(1);
+    throw new YyghException(ResultCodeEnum.NUMBER_NO);
+}
 ```
 
 ---
@@ -59,8 +64,8 @@ boolean success = atomicLong.compareAndSet(expected, expected - 1);
 基于 JWT 实现 Token 认证 + Gateway 网关统一鉴权。
 
 ### 代码位置
-- **网关过滤器**：[AuthGlobalFilter.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/server_gateway/src/main/java/com/atguigu/yygh/gateway/filter/AuthGlobalFilter.java)
-- **JWT 工具类**：[JwtHelper.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/common/service_util/src/main/java/com/atguigu/yygh/common/helper/JwtHelper.java)
+- **网关过滤器**：[AuthGlobalFilter.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/server_gateway/src/main/java/com/yygh/gateway/filter/AuthGlobalFilter.java)
+- **JWT 工具类**：[JwtHelper.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/common/common_util/src/main/java/com/yygh/common/helper/JwtHelper.java)
 
 ### 关键代码
 ```java
@@ -82,7 +87,7 @@ if(!StringUtils.isEmpty(token)) {
 使用 Redisson 实现分布式锁和原子操作。
 
 ### 代码位置
-- **分布式锁实现**：[OrderServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/atguigu/yygh/order/service/impl/OrderServiceImpl.java)
+- **分布式锁实现**：[OrderServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/yygh/order/service/impl/OrderServiceImpl.java)
 
 ### 关键代码
 ```java
@@ -101,7 +106,7 @@ redissonClient.getAtomicLong(redisKey).addAndGet(1);
 集成微信支付 SDK，实现完整的支付流程。
 
 ### 代码位置
-- **支付实现**：[WeixinServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/atguigu/yygh/order/service/impl/WeixinServiceImpl.java)
+- **支付实现**：[WeixinServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/yygh/order/service/impl/WeixinServiceImpl.java)
 
 ### 关键代码
 ```java
@@ -111,24 +116,35 @@ HttpClientUtils.doPostXml(wxUrl, paramMap);
 
 ---
 
-## 5. RabbitMQ 异步消息处理
+## 5. Feign 熔断降级与 Sentinel 流量控制
 
 ### 问题背景
-短信发送等操作耗时较长，同步调用会影响用户体验。
+微服务间远程调用存在网络超时、服务不可用等故障风险，需要熔断降级机制防止雪崩效应。
 
 ### 解决方案
-使用 RabbitMQ 实现异步消息处理，提高系统响应速度。
+采用 Feign + FallbackFactory 熔断降级方案，结合 Sentinel 流量控制。
 
 ### 代码位置
-- **短信消费者**：[SmsReceiver.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_user/src/main/java/com/atguigu/yygh/user/receiver/SmsReceiver.java)
-- **消息发送服务**：[RabbitService.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/common/service_util/src/main/java/com/atguigu/yygh/common/service/RabbitService.java)
+- **Feign 客户端熔断工厂**：[HospitalFeignClientFallbackFactory.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service_client/service_hosp_client/src/main/java/com/yygh/hosp/client/HospitalFeignClientFallbackFactory.java)
+- **Sentinel 依赖配置**：[service_client/pom.xml](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service_client/pom.xml)
 
 ### 关键代码
 ```java
-@RabbitListener(queues = MqConfig.SMS_QUEUE)
-public void handleSmsMessage(MsmVo msmVo, Message message, Channel channel) throws IOException {
-    SMSUtils.sendMessage(phone, code);
-    channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+@FeignClient(value = "service-hosp", fallbackFactory = HospitalFeignClientFallbackFactory.class)
+public interface HospitalFeignClient {
+    // 远程调用方法定义
+}
+
+@Slf4j
+@Component
+public class HospitalFeignClientFallbackFactory implements FallbackFactory<HospitalFeignClient> {
+    @Override
+    public HospitalFeignClient create(Throwable cause) {
+        log.error("HospitalFeignClient 调用失败，触发熔断降级", cause);
+        return new HospitalFeignClient() {
+            // 降级方法返回兜底数据
+        };
+    }
 }
 ```
 
@@ -140,15 +156,19 @@ public void handleSmsMessage(MsmVo msmVo, Message message, Channel channel) thro
 热门数据查询频繁，直接访问数据库会造成性能瓶颈。
 
 ### 解决方案
-采用 Cache-Aside 缓存模式，将热点数据缓存到 Redis。
+采用 Spring Cache + Redis（Cache-Aside 模式），将热点数据缓存到 Redis。
 
 ### 代码位置
-- **缓存实现**：[UserInfoServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_user/src/main/java/com/atguigu/yygh/user/service/impl/UserInfoServiceImpl.java)
+- **缓存实现**：[HospitalServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_hosp/src/main/java/com/yygh/hosp/service/impl/HospitalServiceImpl.java)
 
 ### 关键代码
 ```java
-// 从 Redis 获取验证码
-String codeInRedis = redisTemplate.opsForValue().get(phone);
+// 根据医院编号查询医院（使用 Redis 缓存）
+@Cacheable(value = "hospital", key = "#hoscode")
+public Hospital getByHoscode(String hoscode) {
+    Hospital hospital = hospitalMapper.selectByHoscode(hoscode);
+    return hospital;
+}
 ```
 
 ---
@@ -162,7 +182,7 @@ String codeInRedis = redisTemplate.opsForValue().get(phone);
 使用 MyBatis-Plus 提供的分页插件，简化分页查询开发。
 
 ### 代码位置
-- **分页实现**：[DictServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_cmn/src/main/java/com/atguigu/yygh/cmn/service/impl/DictServiceImpl.java)
+- **分页实现**：[DictServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_cmn/src/main/java/com/yygh/cmn/service/impl/DictServiceImpl.java)
 
 ### 关键代码
 ```java
@@ -179,16 +199,28 @@ IPage<Dict> pageModel = baseMapper.selectPage(pageParam, wrapper);
 异常处理分散在各个业务层，代码冗余且不统一。
 
 ### 解决方案
-使用 @RestControllerAdvice 实现全局异常处理。
+使用 @ControllerAdvice + @ExceptionHandler + @ResponseBody 实现全局异常处理。
 
 ### 代码位置
-- **全局异常处理**：[GlobalExceptionHandler.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/common/service_util/src/main/java/com/atguigu/yygh/common/exception/GlobalExceptionHandler.java)
+- **全局异常处理**：[GlobalExceptionHandler.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/common/common_util/src/main/java/com/yygh/common/exception/GlobalExceptionHandler.java)
 
 ### 关键代码
 ```java
-@ExceptionHandler(YyghException.class)
-public Result error(YyghException e) {
-    return Result.build(null, e.getResultCodeEnum());
+@ControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(Exception.class)
+    @ResponseBody
+    public Result error(Exception e){
+        e.printStackTrace();
+        return Result.fail();
+    }
+
+    @ExceptionHandler(YyghException.class)
+    @ResponseBody
+    public Result error(YyghException e){
+        return Result.build(e.getCode(), e.getMessage());
+    }
 }
 ```
 
@@ -203,7 +235,7 @@ public Result error(YyghException e) {
 通过唯一标识（如订单号）实现接口幂等性校验。
 
 ### 代码位置
-- **幂等性校验**：[PaymentServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/atguigu/yygh/order/service/impl/PaymentServiceImpl.java)
+- **幂等性校验**：[PaymentServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/yygh/order/service/impl/PaymentServiceImpl.java)
 
 ### 关键代码
 ```java
@@ -227,7 +259,7 @@ Excel 文件较大时，使用传统方式读取会导致内存溢出。
 使用 EasyExcel 流式读取，减少内存占用。
 
 ### 代码位置
-- **批量导入**：[DictServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_cmn/src/main/java/com/atguigu/yygh/cmn/service/impl/DictServiceImpl.java)
+- **批量导入**：[DictServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_cmn/src/main/java/com/yygh/cmn/service/impl/DictServiceImpl.java)
 
 ### 关键代码
 ```java
@@ -236,29 +268,32 @@ EasyExcel.read(file.getInputStream(), DictEeVo.class, new DictListener(dictMappe
 
 ---
 
-## 11. Seata AT 分布式事务
+## 11. @RequiredArgsConstructor 构造函数注入
 
 ### 问题背景
-跨服务操作需要保证数据一致性，如订单创建时需要同时扣减号源。
+传统 @Autowired 字段注入导致类与 Spring 容器强耦合，不利于单元测试和不可变设计。
 
 ### 解决方案
-使用 Seata AT 模式实现分布式事务管理。
+使用 Lombok 的 @RequiredArgsConstructor 生成全参构造函数，配合 final 关键字实现不可变构造函数注入。
 
 ### 代码位置
-- **分布式事务**：[OrderServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/atguigu/yygh/order/service/impl/OrderServiceImpl.java)
+- **构造函数注入**：[OrderServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/yygh/order/service/impl/OrderServiceImpl.java)
 
 ### 关键代码
 ```java
-@GlobalTransactional
-public void submitOrder(OrderVo orderVo) {
-    // 1. 扣减号源库存
-    scheduleService.deductStock(orderVo.getScheduleId());
-    
-    // 2. 创建订单
-    orderMapper.insert(order);
-    
-    // 3. 发送通知消息
-    rabbitService.sendMessage(exchange, routingKey, message);
+@Slf4j
+@RequiredArgsConstructor
+@Service
+public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implements OrderService {
+
+    private final PatientFeignClient patientFeignClient;
+
+    private final HospitalFeignClient hospitalFeignClient;
+
+    private final WeixinService weixinService;
+
+    private final RedissonClient redissonClient;
+    // 无需手动编写构造函数，Lombok 自动生成
 }
 ```
 
@@ -267,28 +302,24 @@ public void submitOrder(OrderVo orderVo) {
 ## 12. 缓存穿透防护
 
 ### 问题背景
-热门医院详情页 QPS 极高，Redis 缓存热点数据时存在穿透风险。
+热门排班数据查询频繁，Redis 缓存热点数据时存在穿透风险。
 
 ### 解决方案
-使用布隆过滤器过滤无效查询，减轻数据库压力。
+采用 Spring Cache 注解（@Cacheable）实现缓存，查询时优先命中 Redis，降低数据库查询压力。
 
 ### 代码位置
-- **缓存穿透防护**：[ScheduleServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_hosp/src/main/java/com/atguigu/yygh/hosp/service/impl/ScheduleServiceImpl.java)
+- **缓存穿透防护**：[ScheduleServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_hosp/src/main/java/com/yygh/hosp/service/impl/ScheduleServiceImpl.java)
 
 ### 关键代码
 ```java
-// 使用布隆过滤器检查是否存在
-RBloomFilter<String> bloomFilter = redissonClient.getBloomFilter("schedule:bloom");
-if(!bloomFilter.contains(scheduleId)) {
-    return null; // 不存在，直接返回
-}
-
-// 查询缓存
-String result = redisTemplate.opsForValue().get(key);
-if(result == null) {
-    // 查询数据库并缓存
-    result = scheduleMapper.selectById(scheduleId);
-    redisTemplate.opsForValue().set(key, result, 30, TimeUnit.MINUTES);
+// 根据排班 id 获取排班数据（使用 Redis 缓存）
+@Cacheable(value = "schedule", key = "#scheduleId")
+public Schedule getScheduleId(String scheduleId) {
+    Schedule schedule = baseMapper.selectById(Long.parseLong(scheduleId));
+    if (schedule == null) {
+        throw new YyghException(ResultCodeEnum.DATA_ERROR);
+    }
+    return schedule;
 }
 ```
 
@@ -297,7 +328,7 @@ if(result == null) {
 ## 项目贡献总结
 
 ### 号源高并发超卖防护
-- 搭建「Redis 预扣库存 + Redisson 分布式锁 + MySQL 乐观锁」三层防护
+- 搭建「Redis 预扣库存 + Redisson 原子操作 + 库存回滚」三层防护
 - 彻底解决号源超卖，万级并发下库存数据零误差
 
 ### 支付订单最终一致性
@@ -308,25 +339,29 @@ if(result == null) {
 - 开放 API 存在越权、伪造请求风险，基于 JWT 实现全局 Token 认证
 - Gateway 网关统一鉴权 + 接口签名校验，拦截未授权非法请求
 
-### 跨服务分布式事务
-- 挂号下单同时操作号源、订单、就诊记录多服务数据
-- 整合 Seata AT 模式分布式事务，确保跨服务数据强一致
+### Feign 熔断降级与 Sentinel 流量控制
+- 微服务间远程调用依赖 Feign + FallbackFactory 熔断降级
+- 整合 Sentinel 流量控制，防止雪崩效应
 
 ### 大数据批量导入性能优化
-- 医院排班批量数据量导入执行缓慢
+- 医院排班批量数据导入执行缓慢
 - 采用 EasyExcel 流式读取 + 异步批量插入 + 数据库连接池优化
-- 解决大数据量 QPS 导入延迟高的问题
+- 解决大数据量导入延迟高的问题
 
-### 缓存穿透防护查询
-- 热门医院详情页 QPS 极高，Redis 缓存热点数据
-- 使用布隆过滤器过滤无效查询，大幅降低 MySQL 查询压力
+### 缓存策略优化
+- Redis 缓存 + 注解实现 Cache-Aside 模式，降低数据库查询压力
+- 使用 @Cacheable 注解方便快捷
+
+### 构造函数注入规范
+- 全项目使用 @RequiredArgsConstructor + final 实现构造函数注入
+- 提升代码可测试性，降低与框架耦合度
 
 ---
 
 ## 架构设计亮点
 
 ### 微服务架构
-- **服务拆分**：按业务模块拆分独立服务（用户服务、医院服务、订单服务等）
+- **服务拆分**：按业务模块拆分独立服务（用户服务、医院服务、订单服务、数据字典服务、统计服务、后台管理服务等）
 - **服务注册**：使用 Nacos 实现服务注册与发现
 - **API 网关**：使用 Spring Cloud Gateway 统一入口
 
