@@ -3,7 +3,6 @@ package com.yygh.order.api;
 import com.yygh.common.result.Result;
 import com.yygh.common.utils.AuthContextHolder;
 import com.yygh.enums.OrderStatusEnum;
-import com.yygh.model.acl.User;
 import com.yygh.model.order.OrderInfo;
 import com.yygh.model.user.UserInfo;
 import com.yygh.order.service.OrderService;

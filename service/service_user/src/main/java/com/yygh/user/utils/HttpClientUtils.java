@@ -88,7 +88,7 @@ public class HttpClientUtils {
      *
      * @param url
      * @param body RequestBody
-     * @param mimeType 例如 application/xml "application/x-www-form-urlencoded" a=1&b=2&c=3
+     * @param mimeType 例如 application/xmlw "application/x-www-form-urlencoded" a=1&b=2&c=3
      * @param charset 编码
      * @param connTimeout 建立链接超时时间,毫秒.
      * @param readTimeout 响应超时时间,毫秒.
