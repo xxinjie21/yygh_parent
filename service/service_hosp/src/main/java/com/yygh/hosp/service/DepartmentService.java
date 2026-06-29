@@ -1,7 +1,8 @@
 package com.yygh.hosp.service;
 
+import com.yygh.dto.DepartmentQueryDTO;
+import com.yygh.dto.DepartmentSaveDTO;
 import com.yygh.model.hosp.Department;
-import com.yygh.vo.hosp.DepartmentQueryVo;
 import com.yygh.vo.hosp.DepartmentVo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 
@@ -13,9 +14,9 @@ import java.util.Map;
  * @author XXJ
  */
 public interface DepartmentService {
-    void save(Map<String, Object> paramMap);
+    void save(DepartmentSaveDTO departmentSaveDTO);
 
-    IPage<Department> findPageDepartment(int page, int limit, DepartmentQueryVo departmentQueryVo);
+    IPage<Department> findPageDepartment(DepartmentQueryDTO departmentQueryDTO);
 
     void remove(String hoscode, String depcode);
 

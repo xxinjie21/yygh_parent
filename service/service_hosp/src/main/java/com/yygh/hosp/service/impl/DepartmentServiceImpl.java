@@ -1,10 +1,11 @@
 package com.yygh.hosp.service.impl;
 
 import com.alibaba.fastjson.JSONObject;
+import com.yygh.dto.DepartmentQueryDTO;
+import com.yygh.dto.DepartmentSaveDTO;
 import com.yygh.hosp.mapper.DepartmentMapper;
 import com.yygh.hosp.service.DepartmentService;
 import com.yygh.model.hosp.Department;
-import com.yygh.vo.hosp.DepartmentQueryVo;
 import com.yygh.vo.hosp.DepartmentVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -34,9 +36,9 @@ public class DepartmentServiceImpl extends
 
     // 上传科室信息
     @Override
-    public void save(Map<String, Object> paramMap) {
-        String paramMapString = JSONObject.toJSONString(paramMap);
-        Department department = JSONObject.parseObject(paramMapString, Department.class);
+    public void save(DepartmentSaveDTO departmentSaveDTO) {
+        String dtoString = JSONObject.toJSONString(departmentSaveDTO);
+        Department department = JSONObject.parseObject(dtoString, Department.class);
 
         // 根据医院编号和科室编号查询是否已存在
         Department departmentExist = departmentMapper.selectByHoscodeAndDepcode(
@@ -62,23 +64,25 @@ public class DepartmentServiceImpl extends
 
     // 查询科室（分页 + 条件查询）
     @Override
-    public IPage<Department> findPageDepartment(int page, int limit, DepartmentQueryVo departmentQueryVo) {
-        Page<Department> pageParam = new Page<>(page, limit);
+    public IPage<Department> findPageDepartment(DepartmentQueryDTO dto) {
+        Page<Department> pageParam = new Page<>(dto.getPage(), dto.getSize());
         LambdaQueryWrapper<Department> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Department::getIsDeleted, 0);
-        if (departmentQueryVo != null) {
-            if (!StringUtils.isEmpty(departmentQueryVo.getHoscode())) {
-                wrapper.eq(Department::getHoscode, departmentQueryVo.getHoscode());
+        if (dto != null) {
+            if (!StringUtils.isEmpty(dto.getHoscode())) {
+                wrapper.eq(Department::getHoscode, dto.getHoscode());
             }
-            if (!StringUtils.isEmpty(departmentQueryVo.getDepcode())) {
-                wrapper.like(Department::getDepcode, departmentQueryVo.getDepcode());
+            if (!StringUtils.isEmpty(dto.getDepcode())) {
+                wrapper.like(Department::getDepcode, dto.getDepcode());
             }
         }
-        return baseMapper.selectPage(pageParam, wrapper);
+        IPage<Department> pages = baseMapper.selectPage(pageParam, wrapper);
+        return pages;
     }
 
     // 删除科室
     @Override
+    @CacheEvict(value = "dept", key = "#hoscode + ':' + #depcode")
     public void remove(String hoscode, String depcode) {
         Department department = departmentMapper.selectByHoscodeAndDepcode(hoscode, depcode);
         if (department != null) {

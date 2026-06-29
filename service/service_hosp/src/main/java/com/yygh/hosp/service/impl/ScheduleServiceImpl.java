@@ -3,6 +3,8 @@ package com.yygh.hosp.service.impl;
 import com.alibaba.fastjson.JSONObject;
 import com.yygh.common.exception.YyghException;
 import com.yygh.common.result.ResultCodeEnum;
+import com.yygh.common.utils.BeanCopyUtils;
+import com.yygh.hosp.mapper.HospitalMapper;
 import com.yygh.hosp.mapper.ScheduleMapper;
 import com.yygh.hosp.service.DepartmentService;
 import com.yygh.hosp.service.HospitalService;
@@ -13,7 +15,9 @@ import com.yygh.model.hosp.Hospital;
 import com.yygh.model.hosp.Schedule;
 import com.yygh.vo.hosp.BookingScheduleRuleVo;
 import com.yygh.vo.hosp.ScheduleOrderVo;
-import com.yygh.vo.hosp.ScheduleQueryVo;
+import com.yygh.vo.hosp.ScheduleVo;
+import com.yygh.dto.ScheduleQueryDTO;
+import com.yygh.dto.ScheduleSaveDTO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -26,6 +30,7 @@ import org.joda.time.DateTimeConstants;
 import org.joda.time.format.DateTimeFormat;
 import org.springframework.beans.BeanUtils;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -44,15 +49,17 @@ public class ScheduleServiceImpl extends
 
     private final ScheduleMapper scheduleMapper;
 
+    private final HospitalMapper hospitalMapper;
+
     private final HospitalService hospitalService;
 
     private final DepartmentService departmentService;
 
     // 上传排班数据
     @Override
-    public void save(Map<String, Object> paramMap) {
-        String paramMapString = JSONObject.toJSONString(paramMap);
-        Schedule schedule = JSONObject.parseObject(paramMapString, Schedule.class);
+    public void save(ScheduleSaveDTO scheduleSaveDTO) {
+        String dtoString = JSONObject.toJSONString(scheduleSaveDTO);
+        Schedule schedule = JSONObject.parseObject(dtoString, Schedule.class);
 
         // 根据医院编号和排班编号查询是否已存在
         Schedule scheduleExist = scheduleMapper.selectByHoscodeAndHosScheduleId(
@@ -79,27 +86,29 @@ public class ScheduleServiceImpl extends
 
     // 查询排班（分页 + 条件查询）
     @Override
-    public IPage<Schedule> findPageSchedule(int page, int limit, ScheduleQueryVo scheduleQueryVo) {
+    public IPage<Schedule> findPageSchedule(ScheduleQueryDTO dto) {
         // 构建分页对象
-        Page<Schedule> pageParam = new Page<>(page, limit);
+        Page<Schedule> pageParam = new Page<>(dto.getPage(), dto.getSize());
         // 构建查询条件
         LambdaQueryWrapper<Schedule> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Schedule::getIsDeleted, 0);
         wrapper.eq(Schedule::getStatus, 1);
         // 根据查询条件动态添加
-        if (scheduleQueryVo != null) {
-            if (!StringUtils.isEmpty(scheduleQueryVo.getHoscode())) {
-                wrapper.eq(Schedule::getHoscode, scheduleQueryVo.getHoscode());
+        if (dto != null) {
+            if (!StringUtils.isEmpty(dto.getHoscode())) {
+                wrapper.eq(Schedule::getHoscode, dto.getHoscode());
             }
-            if (!StringUtils.isEmpty(scheduleQueryVo.getDepcode())) {
-                wrapper.eq(Schedule::getDepcode, scheduleQueryVo.getDepcode());
+            if (!StringUtils.isEmpty(dto.getDepcode())) {
+                wrapper.eq(Schedule::getDepcode, dto.getDepcode());
             }
         }
-        return baseMapper.selectPage(pageParam, wrapper);
+        IPage<Schedule> pages = baseMapper.selectPage(pageParam, wrapper);
+        return pages;
     }
 
     // 删除排班
     @Override
+    @CacheEvict(value = "schedule", allEntries = true)
     public void remove(String hoscode, String hosScheduleId) {
         Schedule schedule = scheduleMapper.selectByHoscodeAndHosScheduleId(hoscode, hosScheduleId);
         if (schedule != null) {
@@ -110,7 +119,11 @@ public class ScheduleServiceImpl extends
 
     // 根据医院编号和科室编号，查询排班规则数据（聚合统计）
     @Override
-    public Map<String, Object> getRuleSchedule(long page, long limit, String hoscode, String depcode) {
+    public Map<String, Object> getRuleSchedule(ScheduleQueryDTO dto) {
+        String hoscode = dto.getHoscode();
+        String depcode = dto.getDepcode();
+        long page = dto.getPage();
+        long limit = dto.getSize();
         // 使用SQL GROUP BY聚合查询
         List<BookingScheduleRuleVo> bookingScheduleRuleVoList =
                 scheduleMapper.selectGroupByWorkDate(hoscode, depcode);
@@ -147,22 +160,26 @@ public class ScheduleServiceImpl extends
     // 根据医院编号、科室编号和工作日期查询排班详细信息（使用Redis缓存）
     @Override
     @Cacheable(value = "schedule", key = "#hoscode + ':' + #depcode + ':' + #workDate")
-    public List<Schedule> getDetailSchedule(String hoscode, String depcode, String workDate) {
+    public List<ScheduleVo> getDetailSchedule(String hoscode, String depcode, String workDate) {
         List<Schedule> scheduleList =
                 scheduleMapper.selectByHoscodeAndDepcodeAndWorkDate(hoscode, depcode,
                         new DateTime(workDate).toDate());
         // 遍历设置其他值：医院名称、科室名称、日期对应星期
         scheduleList.forEach(this::packageSchedule);
-        return scheduleList;
+        return scheduleList.stream().map(this::toScheduleVo).collect(Collectors.toList());
     }
 
     // 获取可预约排班数据
     @Override
-    public Object getBookingScheduleRule(Integer page, Integer limit, String hoscode, String depcode) {
+    public Object getBookingScheduleRule(ScheduleQueryDTO dto) {
+        String hoscode = dto.getHoscode();
+        String depcode = dto.getDepcode();
+        Integer page = dto.getPage().intValue();
+        Integer limit = dto.getSize().intValue();
         Map<String, Object> result = new HashMap<>();
 
         // 获取预约规则
-        Hospital hospital = hospitalService.getByHoscode(hoscode);
+        Hospital hospital = hospitalMapper.selectByHoscode(hoscode);
         if (null == hospital) {
             throw new YyghException(ResultCodeEnum.DATA_ERROR);
         }
@@ -247,13 +264,13 @@ public class ScheduleServiceImpl extends
     // 根据排班id获取排班数据（使用Redis缓存）
     @Override
     @Cacheable(value = "schedule", key = "#scheduleId")
-    public Schedule getScheduleId(String scheduleId) {
+    public ScheduleVo getScheduleId(String scheduleId) {
         // String id 转 Long id
         Schedule schedule = baseMapper.selectById(Long.parseLong(scheduleId));
         if (schedule == null) {
             throw new YyghException(ResultCodeEnum.DATA_ERROR);
         }
-        return this.packageSchedule(schedule);
+        return toScheduleVo(this.packageSchedule(schedule));
     }
 
     // 根据排班id获取预约下单数据
@@ -261,13 +278,14 @@ public class ScheduleServiceImpl extends
     public ScheduleOrderVo getScheduleOrderVo(String scheduleId) {
         ScheduleOrderVo scheduleOrderVo = new ScheduleOrderVo();
         // 排班信息
-        Schedule schedule = this.getScheduleId(scheduleId);
+        Schedule schedule = baseMapper.selectById(Long.parseLong(scheduleId));
         if (schedule == null) {
             throw new YyghException(ResultCodeEnum.PARAM_ERROR);
         }
+        schedule = this.packageSchedule(schedule);
 
         // 获取预约规则信息
-        Hospital hospital = hospitalService.getByHoscode(schedule.getHoscode());
+        Hospital hospital = hospitalMapper.selectByHoscode(schedule.getHoscode());
         if (hospital == null) {
             throw new YyghException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -349,6 +367,16 @@ public class ScheduleServiceImpl extends
     private DateTime getDateTime(Date date, String timeString) {
         String dateTimeString = new DateTime(date).toString("yyyy-MM-dd") + " " + timeString;
         return DateTimeFormat.forPattern("yyyy-MM-dd HH:mm").parseDateTime(dateTimeString);
+    }
+
+    // 排班PO转VO（处理workDate Date→String转换）
+    private ScheduleVo toScheduleVo(Schedule schedule) {
+        if (schedule == null) return null;
+        ScheduleVo vo = BeanCopyUtils.copy(schedule, ScheduleVo.class);
+        if (schedule.getWorkDate() != null) {
+            vo.setWorkDate(new DateTime(schedule.getWorkDate()).toString("yyyy-MM-dd"));
+        }
+        return vo;
     }
 
     // 封装排班详情——设置医院名称、科室名称、日期对应星期

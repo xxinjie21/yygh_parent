@@ -3,12 +3,11 @@ package com.yygh.hosp.controller;
 import com.yygh.common.exception.YyghException;
 import com.yygh.common.result.Result;
 import com.yygh.common.utils.MD5;
+import com.yygh.dto.HospitalSetQueryDTO;
 import com.yygh.hosp.service.HospitalSetService;
 import com.yygh.model.hosp.HospitalSet;
-import com.yygh.model.order.OrderInfo;
-import com.yygh.vo.hosp.HospitalSetQueryVo;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,7 +21,6 @@ import java.util.Random;
 @Tag(name = "医院设置管理")
 @RestController
 @RequestMapping("/admin/hosp/hospitalSet")
-//@CrossOrigin
 @RequiredArgsConstructor
 /**
  * 医院设置控制器
@@ -56,29 +54,18 @@ public class HospitalSetController {
 
     //3 条件查询带分页
     @Operation(summary = "条件查询带分页")
-    @PostMapping("findPageHospSet/{current}/{limit}")
-    public Result findPageHospSet(@PathVariable long current,
-                                  @PathVariable long limit,
-                                  @RequestBody
-                                          (required = false) HospitalSetQueryVo hospitalSetQueryVo) {
+    @PostMapping("findPageHospSet")
+    public Result findPageHospSet(@RequestBody HospitalSetQueryDTO dto) {
         //创建page对象，传递当前页，每页记录数
-        Page<HospitalSet> page = new Page<>(current,limit);
+        Page<HospitalSet> page = new Page<>(dto.getPage(), dto.getSize());
         //构建条件
         LambdaQueryWrapper<HospitalSet> wrapper = new LambdaQueryWrapper<>();
-        String hosname = hospitalSetQueryVo.getHosname();//医院名称
-        String hoscode = hospitalSetQueryVo.getHoscode();//医院编号
-        wrapper.like(hosname!=null, HospitalSet::getHosname,hosname);
-        wrapper.eq(hoscode!=null,HospitalSet::getHoscode,hoscode);
-//        if(!StringUtils.isEmpty(hosname)) {
-//            wrapper.like("hosname",hospitalSetQueryVo.getHosname());
-//        }
-//        if(!StringUtils.isEmpty(hoscode)) {
-//            wrapper.eq("hoscode",hospitalSetQueryVo.getHoscode());
-//        }
+        wrapper.like(dto.getHosname()!=null, HospitalSet::getHosname, dto.getHosname());
+        wrapper.eq(dto.getHoscode()!=null, HospitalSet::getHoscode, dto.getHoscode());
         //调用方法实现分页查询
         Page<HospitalSet> pageHospitalSet = hospitalSetService.page(page, wrapper);
         //返回结果
-        return Result.ok(pageHospitalSet);
+        return Result.ok((IPage<HospitalSet>) pageHospitalSet);
     }
 
     //4 添加医院设置

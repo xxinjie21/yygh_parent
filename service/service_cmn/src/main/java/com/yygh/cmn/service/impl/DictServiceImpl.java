@@ -7,6 +7,8 @@ import com.yygh.cmn.mapper.DictMapper;
 import com.yygh.cmn.service.DictService;
 import com.yygh.model.cmn.Dict;
 import com.yygh.vo.cmn.DictEeVo;
+import com.yygh.vo.cmn.DictVo;
+import com.yygh.common.utils.BeanCopyUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.BeanUtils;
@@ -31,7 +33,7 @@ public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements Di
     //根据数据id查询子数据列表
     @Cacheable(value = "dict", keyGenerator = "keyGenerator")
     @Override
-    public List<Dict> findChlidData(Long id) {
+    public List<DictVo> findChlidData(Long id) {
         LambdaQueryWrapper<Dict> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Dict::getParentId, id);
         List<Dict> dictList = baseMapper.selectList(wrapper);
@@ -41,7 +43,7 @@ public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements Di
             boolean isChild = this.isChildren(dictId);
             dict.setHasChildren(isChild);
         }
-        return dictList;
+        return BeanCopyUtils.copyList(dictList, DictVo.class);
     }
 
     //导出数据字典，返回Excel字节数组
@@ -97,12 +99,16 @@ public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements Di
 
     //根据dictCode获取下级节点
     @Override
-    public List<Dict> findByDictCode(String dictCode) {
-        //根据dictcode获取对应id
-        Dict dict=this.getDictByDictCode(dictCode);
-        //根据id获取子节点
-        List<Dict> list = this.findChlidData(dict.getId());
-        return list;
+    public List<DictVo> findByDictCode(String dictCode) {
+        Dict dict = this.getDictByDictCode(dictCode);
+        return getProxy().findChlidData(dict.getId());
+    }
+
+    /** 获取代理对象，避免内部调用绕过 @Cacheable */
+    private DictServiceImpl getProxy() {
+        return org.springframework.aop.framework.AopContext.currentProxy() != null
+                ? (DictServiceImpl) org.springframework.aop.framework.AopContext.currentProxy()
+                : this;
     }
 
     private Dict getDictByDictCode(String dictCode) {

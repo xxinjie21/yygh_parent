@@ -2,6 +2,7 @@ package com.yygh.cmn.controller;
 import com.yygh.cmn.service.DictService;
 import com.yygh.common.result.Result;
 import com.yygh.model.cmn.Dict;
+import com.yygh.vo.cmn.DictVo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -46,14 +47,14 @@ public class DictController {
     //根据dictCode获取下级节点
     @GetMapping(value = "findByDictCode/{dictCode}")
     public Result findByDictCode(@PathVariable String dictCode) {
-        List<Dict> list = dictService.findByDictCode(dictCode);
+        List<DictVo> list = dictService.findByDictCode(dictCode);
         return Result.ok(list);
     }
 
     //根据数据id查询子数据列表
     @GetMapping("findChildData/{id}")
     public Result findChildData(@PathVariable Long id) {
-        List<Dict> list = dictService.findChlidData(id);
+        List<DictVo> list = dictService.findChlidData(id);
         return Result.ok(list);
     }
 

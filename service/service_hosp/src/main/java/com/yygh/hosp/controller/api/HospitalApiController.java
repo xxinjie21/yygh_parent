@@ -1,29 +1,26 @@
 package com.yygh.hosp.controller.api;
 
 import com.yygh.common.result.Result;
+import com.yygh.dto.HospitalQueryDTO;
+import com.yygh.dto.ScheduleQueryDTO;
 import com.yygh.hosp.service.DepartmentService;
 import com.yygh.hosp.service.HospitalService;
 import com.yygh.hosp.service.HospitalSetService;
 import com.yygh.hosp.service.ScheduleService;
-import com.yygh.model.hosp.Hospital;
-import com.yygh.model.hosp.Schedule;
 import com.yygh.vo.hosp.DepartmentVo;
-import com.yygh.vo.hosp.HospitalQueryVo;
+import com.yygh.model.hosp.Hospital;
+import com.yygh.vo.hosp.HospitalVo;
 import com.yygh.vo.hosp.ScheduleOrderVo;
+import com.yygh.vo.hosp.ScheduleVo;
 import com.yygh.vo.order.SignInfoVo;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.RequiredArgsConstructor;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @Tag(name = "医院管理接口")
 @RestController
@@ -44,13 +41,11 @@ public class HospitalApiController {
 
     //医院列表
     @Operation(summary = "获取分页列表")
-    @GetMapping("/findHospList/{page}/{limit}")
-    public Result index(@PathVariable Integer page, @PathVariable Integer limit, HospitalQueryVo hospitalQueryVo) {
+    @PostMapping("findHospList")
+    public Result index(@RequestBody HospitalQueryDTO dto) {
         //显示上线的医院
-        hospitalQueryVo.setStatus(1);
-        IPage<Hospital> pageModel = hospitalService.selectHospPage(page, limit, hospitalQueryVo);
-        List<Hospital> content = pageModel.getRecords();
-        long totalPages = pageModel.getPages();
+        dto.setStatus(1);
+        IPage<Hospital> pageModel = hospitalService.selectHospPage(dto);
         return Result.ok(pageModel);
     }
 
@@ -58,7 +53,7 @@ public class HospitalApiController {
     @Operation(summary = "根据医院名称获取医院列表")
     @GetMapping("/findByHosname/{hosname}")
     public Result findByHosname(@PathVariable String hosname) {
-        List<Hospital> list = hospitalService.findByHosname(hosname);
+        List<HospitalVo> list = hospitalService.findByHosname(hosname);
         return Result.ok(list);
     }
 
@@ -74,16 +69,15 @@ public class HospitalApiController {
     @Operation(summary = "根据医院编号查询医院预约挂号详情")
     @GetMapping("/findHospDetail/{hoscode}")
     public Result item(@PathVariable String hoscode) {
-        Map<String, Object> map = hospitalService.item(hoscode);
-        return Result.ok(map);
+        HospitalVo vo = hospitalService.item(hoscode);
+        return Result.ok(vo);
     }
 
     //获取可预约排班数据
     @Operation(summary = "获取可预约排班数据")
-    @GetMapping("auth/getBookingScheduleRule/{page}/{limit}/{hoscode}/{depcode}")
-    public Result getBookingSchedule(@PathVariable Integer page, @PathVariable Integer limit,
-                                     @PathVariable String hoscode, @PathVariable String depcode) {
-        return Result.ok(scheduleService.getBookingScheduleRule(page, limit, hoscode, depcode));
+    @PostMapping("auth/getBookingScheduleRule")
+    public Result getBookingSchedule(@RequestBody ScheduleQueryDTO dto) {
+        return Result.ok(scheduleService.getBookingScheduleRule(dto));
     }
 
     //获取排班数据
@@ -97,8 +91,8 @@ public class HospitalApiController {
     @Operation(summary = "根据排班id获取排班数据")
     @GetMapping("getSchedule/{scheduleId}")
     public Result getSchedule(@PathVariable String scheduleId) {
-        Schedule schedule = scheduleService.getScheduleId(scheduleId);
-        return Result.ok(schedule);
+        ScheduleVo vo = scheduleService.getScheduleId(scheduleId);
+        return Result.ok(vo);
     }
 
     //根据排班id获取预约下单数据
