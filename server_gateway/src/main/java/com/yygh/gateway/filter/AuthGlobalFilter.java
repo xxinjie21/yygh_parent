@@ -25,7 +25,6 @@ import java.util.List;
  * </p>
  *
  * @author XXJ
- * @since 2019-11-21
  */
 @Component
 public class AuthGlobalFilter implements GlobalFilter, Ordered {

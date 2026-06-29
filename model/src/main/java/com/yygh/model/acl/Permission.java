@@ -14,7 +14,6 @@ import java.util.List;
  * </p>
  *
  * @author XXJ
- * @since 2019-11-08
  */
 @Data
 @Schema(description = "权限")

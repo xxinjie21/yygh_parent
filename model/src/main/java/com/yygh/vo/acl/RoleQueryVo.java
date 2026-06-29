@@ -11,7 +11,6 @@ import java.io.Serializable;
  * </p>
  *
  * @author XXJ
- * @since 2019-11-08
  */
 @Data
 @Schema(description = "角色查询实体")

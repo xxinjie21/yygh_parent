@@ -12,7 +12,6 @@ import lombok.Data;
  * </p>
  *
  * @author XXJ
- * @since 2019-11-08
  */
 @Data
 @Schema(description = "角色")
