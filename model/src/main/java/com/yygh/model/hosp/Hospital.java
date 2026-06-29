@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 医院信息
@@ -13,6 +14,7 @@ import lombok.Data;
  * @author XXJ
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Schema(description = "医院信息")
 @TableName("hospital")
 public class Hospital extends BaseEntity {

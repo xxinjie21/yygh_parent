@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 科室信息
@@ -12,6 +13,7 @@ import lombok.Data;
  * @author XXJ
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Schema(description = "科室信息")
 @TableName("department")
 public class Department extends BaseEntity {

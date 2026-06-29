@@ -3,6 +3,7 @@ package com.yygh.hospital.model;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 
@@ -14,6 +15,7 @@ import java.io.Serializable;
  * @author XXJ
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Schema(name = "HospitalSet")
 @TableName("hospital_set")
 public class HospitalSet extends BaseEntity {

@@ -3,6 +3,7 @@ package com.yygh.common.exception;
 import com.yygh.common.result.ResultCodeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 自定义全局异常类
@@ -10,6 +11,7 @@ import lombok.Data;
  * @author XXJ
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Schema(name = "自定义全局异常类")
 public class YyghException extends RuntimeException {
 

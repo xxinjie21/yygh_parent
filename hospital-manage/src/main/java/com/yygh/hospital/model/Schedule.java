@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.util.Date;
@@ -16,6 +17,7 @@ import java.util.Date;
  * @author XXJ
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Schema(name = "Schedule")
 @TableName("schedule")
 public class Schedule extends BaseNoAutoEntity {
