@@ -2,10 +2,11 @@ package com.yygh.user.api;
 
 import com.yygh.common.result.Result;
 import com.yygh.common.utils.AuthContextHolder;
-import com.yygh.model.user.UserInfo;
+import com.yygh.common.utils.BeanCopyUtils;
 import com.yygh.user.service.UserInfoService;
 import com.yygh.vo.user.LoginVo;
 import com.yygh.vo.user.UserAuthVo;
+import com.yygh.vo.user.UserInfoVo;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +45,7 @@ public class UserInfoApiController {
     @GetMapping("auth/getUserInfo")
     public Result getUserInfo(@RequestHeader("token") String token) {
         Long userId = AuthContextHolder.getUserId(token);
-        UserInfo userInfo = userInfoService.getById(userId);
-        return Result.ok(userInfo);
+        UserInfoVo userInfoVo = BeanCopyUtils.copy(userInfoService.getById(userId), UserInfoVo.class);
+        return Result.ok(userInfoVo);
     }
 }

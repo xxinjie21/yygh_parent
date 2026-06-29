@@ -4,15 +4,20 @@ import com.yygh.cmn.client.DictFeignClient;
 import com.yygh.common.exception.YyghException;
 import com.yygh.common.helper.JwtHelper;
 import com.yygh.common.result.ResultCodeEnum;
+
+import com.yygh.dto.UserQueryDTO;
 import com.yygh.enums.AuthStatusEnum;
 import com.yygh.model.user.Patient;
 import com.yygh.model.user.UserInfo;
 import com.yygh.user.mapper.UserInfoMapper;
 import com.yygh.user.service.PatientService;
 import com.yygh.user.service.UserInfoService;
+
 import com.yygh.vo.user.LoginVo;
 import com.yygh.vo.user.UserAuthVo;
-import com.yygh.vo.user.UserInfoQueryVo;
+import com.yygh.vo.user.UserInfoVo;
+import com.yygh.common.utils.BeanCopyUtils;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -25,8 +30,10 @@ import org.springframework.util.StringUtils;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 /**
  * 用户服务实现类
+ *
  * @author XXJ
  */
 @RequiredArgsConstructor
@@ -136,29 +143,25 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 
     //用户列表（条件查询带分页）
     @Override
-    public IPage<UserInfo> selectPage(Page<UserInfo> pageParam, UserInfoQueryVo userInfoQueryVo) {
-        //UserInfoQueryVo获取条件值
-        String keyword = userInfoQueryVo.getKeyword(); //用户名称
-        Integer status = userInfoQueryVo.getStatus();//用户状态
-        Integer authStatus = userInfoQueryVo.getAuthStatus(); //认证状态
-        String createTimeBegin = userInfoQueryVo.getCreateTimeBegin(); //开始时间
-        String createTimeEnd = userInfoQueryVo.getCreateTimeEnd(); //结束时间
-        //对条件值进行非空判断
+    public IPage<UserInfoVo> selectPage(Page<UserInfo> pageParam, UserQueryDTO dto) {
+        String keyword = dto.getKeyword();
+        Integer status = dto.getStatus();
+        Integer authStatus = dto.getAuthStatus();
+        String createTimeBegin = dto.getCreateTimeBegin();
+        String createTimeEnd = dto.getCreateTimeEnd();
         LambdaQueryWrapper<UserInfo> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(keyword != null, UserInfo::getName, keyword)
                 .or().like(keyword != null, UserInfo::getPhone, keyword);
-        //用户审批时用上
         wrapper.eq(status != null, UserInfo::getStatus, status);
         wrapper.eq(authStatus != null, UserInfo::getAuthStatus, authStatus);
         wrapper.ge(createTimeBegin != null, UserInfo::getCreateTime, createTimeBegin);
         wrapper.le(createTimeEnd != null, UserInfo::getCreateTime, createTimeEnd);
-        //调用mapper的方法
-        IPage<UserInfo> pages = baseMapper.selectPage(pageParam, wrapper);
-        //编号变成对应值封装
-        pages.getRecords().stream().forEach(item -> {
-            this.packageUserInfo(item);
-        });
-        return pages;
+        IPage<UserInfo> rawPages = baseMapper.selectPage(pageParam, wrapper);
+        rawPages.getRecords().forEach(this::packageUserInfo);
+        List<UserInfoVo> voList = BeanCopyUtils.copyList(rawPages.getRecords(), UserInfoVo.class);
+        IPage<UserInfoVo> result = new Page<>(rawPages.getCurrent(), rawPages.getSize(), rawPages.getTotal());
+        result.setRecords(voList);
+        return result;
     }
 
     //锁定
@@ -173,15 +176,9 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 
     //用户详情
     @Override
-    public Map<String, Object> show(Long userId) {
-        Map<String, Object> map = new HashMap<>();
-        //根据userid查询用户信息
+    public UserInfoVo show(Long userId) {
         UserInfo userInfo = this.packageUserInfo(baseMapper.selectById(userId));
-        map.put("userInfo", userInfo);
-        //根据userid查询就诊人信息
-        List<Patient> patientList = patientService.findAllUserId(userId);
-        map.put("patientList", patientList);
-        return map;
+        return BeanCopyUtils.copy(userInfo, UserInfoVo.class);
     }
 
     //认证审批 2通过 -1不通过

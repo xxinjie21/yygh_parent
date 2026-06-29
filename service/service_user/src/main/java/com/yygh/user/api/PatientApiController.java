@@ -2,8 +2,10 @@ package com.yygh.user.api;
 
 import com.yygh.common.result.Result;
 import com.yygh.common.utils.AuthContextHolder;
+import com.yygh.common.utils.BeanCopyUtils;
 import com.yygh.model.user.Patient;
 import com.yygh.user.service.PatientService;
+import com.yygh.vo.user.PatientVo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,7 +25,7 @@ public class PatientApiController {
     @GetMapping("auth/findAll")
     public Result findAll(@RequestHeader("token") String token) {
         Long userId = AuthContextHolder.getUserId(token);
-        List<Patient> list = patientService.findAllUserId(userId);
+        List<PatientVo> list = patientService.findAllUserId(userId);
         return Result.ok(list);
     }
     //添加就诊人
@@ -37,8 +39,8 @@ public class PatientApiController {
     //根据id获取就诊人信息
     @GetMapping("auth/get/{id}")
     public Result getPatient(@PathVariable Long id) {
-        Patient patient = patientService.getPatientId(id);
-        return Result.ok(patient);
+        PatientVo patientVo = patientService.getPatientId(id);
+        return Result.ok(patientVo);
     }
     //修改就诊人
     @PostMapping("auth/update")

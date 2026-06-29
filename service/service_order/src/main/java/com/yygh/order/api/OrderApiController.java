@@ -4,11 +4,11 @@ import com.yygh.common.result.Result;
 import com.yygh.common.utils.AuthContextHolder;
 import com.yygh.enums.OrderStatusEnum;
 import com.yygh.model.order.OrderInfo;
-import com.yygh.model.user.UserInfo;
 import com.yygh.order.service.OrderService;
 import com.yygh.vo.order.OrderCountQueryVo;
-import com.yygh.vo.order.OrderQueryVo;
-import com.yygh.vo.user.UserInfoQueryVo;
+import com.yygh.vo.order.OrderCountVo;
+import com.yygh.vo.order.OrderInfoVo;
+import com.yygh.dto.OrderQueryDTO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,8 +16,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @Tag(name = "订单接口")
 @RestController
@@ -40,19 +38,18 @@ public class OrderApiController {
 
     //根据订单id查询订单详情
     @GetMapping("auth/getOrders/{orderId}")
-    public Result getOrders(@PathVariable String orderId) {
-        OrderInfo orderInfo = orderService.getOrder(orderId);
-        return Result.ok(orderInfo);
+    public Result<OrderInfoVo> getOrders(@PathVariable String orderId) {
+        OrderInfoVo orderInfoVo = orderService.getOrder(orderId);
+        return Result.ok(orderInfoVo);
     }
 
     //订单列表（条件查询带分页）
-    @GetMapping("auth/{page}/{limit}")
-    public Result list(@PathVariable Long page, @PathVariable Long limit,
-                       OrderQueryVo orderQueryVo, @RequestHeader("token") String token) {
-        orderQueryVo.setUserId(AuthContextHolder.getUserId(token));
-        Page<OrderInfo> pageParam = new Page<>(page, limit);
+    @PostMapping("auth/list")
+    public Result list(@RequestBody OrderQueryDTO dto, @RequestHeader("token") String token) {
+        dto.setUserId(AuthContextHolder.getUserId(token));
+        Page<OrderInfo> pageParam = new Page<>(dto.getPage(), dto.getSize());
         IPage<OrderInfo> pageModel =
-                orderService.selectPage(pageParam, orderQueryVo);
+                orderService.selectPage(pageParam, dto);
         return Result.ok(pageModel);
     }
 
@@ -71,7 +68,7 @@ public class OrderApiController {
 
     //订单统计
     @PostMapping("inner/getCountMap")
-    public Map<String, Object> getCountMap(@RequestBody OrderCountQueryVo orderCountQueryVo) {
+    public OrderCountVo getCountMap(@RequestBody OrderCountQueryVo orderCountQueryVo) {
         return orderService.getCountMap(orderCountQueryVo);
     }
 }

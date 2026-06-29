@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.yygh.common.exception.YyghException;
 import com.yygh.common.helper.HttpRequestHelper;
 import com.yygh.common.result.ResultCodeEnum;
+import com.yygh.common.utils.BeanCopyUtils;
 import com.yygh.enums.OrderStatusEnum;
 import com.yygh.hosp.client.HospitalFeignClient;
 import com.yygh.model.order.OrderInfo;
@@ -13,11 +14,12 @@ import com.yygh.order.service.OrderService;
 import com.yygh.order.service.WeixinService;
 import com.yygh.user.client.PatientFeignClient;
 import com.yygh.vo.hosp.ScheduleOrderVo;
-
+import com.yygh.dto.OrderQueryDTO;
 import com.yygh.vo.order.*;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -69,6 +71,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
         // 使用Redisson RAtomicLong原子扣减号源
         String redisKey = "schedule:" + scheduleOrderVo.getHosScheduleId() + ":availableNumber";
         RAtomicLong atomicLong = redissonClient.getAtomicLong(redisKey);
+        // 初始化：首次使用或Redis重启后，从排班数据同步号源
+        if (!atomicLong.isExists()) {
+            atomicLong.set(scheduleOrderVo.getAvailableNumber());
+        }
         long afterDecrement = atomicLong.addAndGet(-1);
         if (afterDecrement < 0) {
             // 号源不足，回退
@@ -158,21 +164,22 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
 
     // 根据订单id查询订单详情
     @Override
-    public OrderInfo getOrder(String orderId) {
+    public OrderInfoVo getOrder(String orderId) {
         OrderInfo orderInfo = baseMapper.selectById(orderId);
-        return this.packOrderInfo(orderInfo);
+        this.packOrderInfo(orderInfo);
+        return BeanCopyUtils.copy(orderInfo, OrderInfoVo.class);
     }
 
     // 订单列表（条件查询带分页）
     @Override
-    public IPage<OrderInfo> selectPage(Page<OrderInfo> pageParam, OrderQueryVo orderQueryVo) {
+    public IPage<OrderInfo> selectPage(Page<OrderInfo> pageParam, OrderQueryDTO orderQueryDTO) {
         // 获取条件值
-        String name = orderQueryVo.getKeyword(); // 医院名称
-        Long patientId = orderQueryVo.getPatientId(); // 就诊人ID
-        String orderStatus = orderQueryVo.getOrderStatus(); // 订单状态
-        String reserveDate = orderQueryVo.getReserveDate(); // 预约日期
-        String createTimeBegin = orderQueryVo.getCreateTimeBegin();
-        String createTimeEnd = orderQueryVo.getCreateTimeEnd();
+        String name = orderQueryDTO.getKeyword(); // 医院名称
+        Long patientId = orderQueryDTO.getPatientId(); // 就诊人ID
+        String orderStatus = orderQueryDTO.getOrderStatus(); // 订单状态
+        String reserveDate = orderQueryDTO.getReserveDate(); // 预约日期
+        String createTimeBegin = orderQueryDTO.getCreateTimeBegin();
+        String createTimeEnd = orderQueryDTO.getCreateTimeEnd();
 
         // 构建查询条件
         LambdaQueryWrapper<OrderInfo> wrapper = new LambdaQueryWrapper<>();
@@ -264,7 +271,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
 
     // 订单统计
     @Override
-    public Map<String, Object> getCountMap(OrderCountQueryVo orderCountQueryVo) {
+    public OrderCountVo getCountMap(OrderCountQueryVo orderCountQueryVo) {
         // 调用mapper方法得到统计数据
         List<OrderCountVo> orderCountVoList = baseMapper.selectOrderCount(orderCountQueryVo);
         // 获取X轴数据：日期列表
@@ -273,10 +280,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
         // 获取Y轴数据：数量列表
         List<Integer> countList = orderCountVoList.stream()
                 .map(OrderCountVo::getCount).collect(Collectors.toList());
-        Map<String, Object> map = new HashMap<>();
-        map.put("dateList", dateList);
-        map.put("countList", countList);
-        return map;
+        OrderCountVo orderCountVo = new OrderCountVo();
+        orderCountVo.setDateList(dateList);
+        orderCountVo.setCountList(countList);
+        return orderCountVo;
     }
 
     // MQ回调：同步订单状态（仅更新本地订单状态，不重复执行业务逻辑）

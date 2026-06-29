@@ -2,6 +2,8 @@ package com.yygh.user.service.impl;
 
 import com.yygh.cmn.client.DictFeignClient;
 import com.yygh.enums.DictEnum;
+import com.yygh.common.utils.BeanCopyUtils;
+import com.yygh.vo.user.PatientVo;
 import com.yygh.model.user.Patient;
 import com.yygh.user.mapper.PatientMapper;
 import com.yygh.user.service.PatientService;
@@ -24,7 +26,7 @@ public class PatientServiceImpl extends ServiceImpl<PatientMapper, Patient> impl
 
     //获取就诊人列表
     @Override
-    public List<Patient> findAllUserId(Long userId) {
+    public List<PatientVo> findAllUserId(Long userId) {
         //根据userid查询所有就诊人信息列表
         LambdaQueryWrapper<Patient> wrapper=new LambdaQueryWrapper<>();
         wrapper.eq(Patient::getUserId,userId);
@@ -34,13 +36,14 @@ public class PatientServiceImpl extends ServiceImpl<PatientMapper, Patient> impl
             //其他参数封装
             this.packPatient(item);
         });
-        return patientList;
+        return BeanCopyUtils.copyList(patientList, PatientVo.class);
     }
 
     //根据id获取就诊人信息
     @Override
-    public Patient getPatientId(Long id) {
-        return this.packPatient(baseMapper.selectById(id));
+    public PatientVo getPatientId(Long id) {
+        Patient patient = this.packPatient(baseMapper.selectById(id));
+        return BeanCopyUtils.copy(patient, PatientVo.class);
     }
 
     //Patient对象里面其他参数封装
