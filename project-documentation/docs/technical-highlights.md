@@ -6,7 +6,7 @@
 
 **项目名称**：电子挂号系统  
 **开发时间**：2026.03 - 2026.05  
-**技术架构**：Spring Boot 2.7.18、Spring Cloud 2021.0.9、Spring Cloud Alibaba 2021.0.6.1、Nacos、Gateway、MyBatis-Plus、MySQL、Redis、Sentinel、EasyExcel、JWT
+**技术架构**：Spring Boot 3.2.12、Spring Cloud 2023.0.3、Spring Cloud Alibaba 2023.0.1.0、Nacos、Gateway、MyBatis-Plus、MySQL、Redis、Sentinel、EasyExcel、springdoc-openapi、JWT
 
 ---
 

@@ -59,10 +59,10 @@ yygh_parent/                           # Maven 父工程
 
 | 分类 | 技术 | 版本 |
 | :--- | :--- | :--- |
-| 语言 | Java | 8+ |
-| 框架 | Spring Boot | 2.7.18 |
-| 微服务 | Spring Cloud | 2021.0.9 |
-| 微服务 | Spring Cloud Alibaba | 2021.0.6.1 |
+| 语言 | Java | 17+ |
+| 框架 | Spring Boot | 3.2.12 |
+| 微服务 | Spring Cloud | 2023.0.3 |
+| 微服务 | Spring Cloud Alibaba | 2023.0.1.0 |
 | 注册中心 | Nacos | 2.x |
 | 网关 | Spring Cloud Gateway | 3.x |
 | ORM | MyBatis-Plus | 3.5.3.1 |
@@ -110,7 +110,7 @@ yygh_parent/                           # Maven 父工程
 <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>2.7.18</version>
+    <version>3.2.12</version>
 </parent>
 
 <dependencyManagement>

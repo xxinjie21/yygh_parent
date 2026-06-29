@@ -1278,8 +1278,8 @@ public class ExcelListener extends AnalysisEventListener<HospitalExcelVo> {
    - 引入配置中心（Nacos Config）
 
 2. **技术栈升级**：
-   - Spring Boot 2.7.18 → 3.x
-   - Spring Cloud 2021.0.9 → 更高版本
+   - Spring Boot → 已升级至 3.2.12
+   - Spring Cloud → 已升级至 2023.0.3
    - JDK 8 → JDK 17/21
    - 使用 Virtual Thread 提升并发能力
 
