@@ -1,10 +1,14 @@
 package com.yygh.hospital.controller;
 
+import com.alibaba.fastjson.JSONObject;
+import com.yygh.hospital.dto.SubmitOrderDTO;
+import com.yygh.hospital.dto.UpdateCancelStatusDTO;
+import com.yygh.hospital.dto.UpdatePayStatusDTO;
 import com.yygh.hospital.service.ApiService;
 import com.yygh.hospital.service.HospitalService;
+import com.yygh.hospital.util.Result;
 import com.yygh.hospital.util.ResultCodeEnum;
 import com.yygh.hospital.util.YyghException;
-import com.yygh.hospital.util.Result;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,17 +31,14 @@ public class HospitalController {
 
 	private final ApiService apiService;
 
-	/**
-	 * 预约下单
-	 */
+	/** 预约下单 */
 	@PostMapping("/order/submitOrder")
-	public Result AgreeAccountLendProject(@RequestBody Map<String, Object> paramMap) {
+	public Result AgreeAccountLendProject(@RequestBody SubmitOrderDTO dto) {
 		try {
-			String key = (String) paramMap.get("sign");
-			//不加密直接调用
-			if(!key.equals(apiService.getSignKey())) {
+			if (!dto.getSign().equals(apiService.getSignKey())) {
 				throw new YyghException(ResultCodeEnum.SIGN_ERROR);
 			}
+			Map<String, Object> paramMap = JSONObject.parseObject(JSONObject.toJSONString(dto), Map.class);
 			Map<String, Object> resultMap = hospitalService.submitOrder(paramMap);
 			return Result.ok(resultMap);
 		} catch (YyghException e) {
@@ -45,17 +46,14 @@ public class HospitalController {
 		}
 	}
 
-	/**
-	 * 更新支付状态
-	 */
+	/** 更新支付状态 */
 	@PostMapping("/order/updatePayStatus")
-	public Result updatePayStatus(@RequestBody Map<String, Object> paramMap) {
+	public Result updatePayStatus(@RequestBody UpdatePayStatusDTO dto) {
 		try {
-			String key = (String) paramMap.get("sign");
-			//不加密直接调用
-			if(!key.equals(apiService.getSignKey())) {
+			if (!dto.getSign().equals(apiService.getSignKey())) {
 				throw new YyghException(ResultCodeEnum.SIGN_ERROR);
 			}
+			Map<String, Object> paramMap = JSONObject.parseObject(JSONObject.toJSONString(dto), Map.class);
 			hospitalService.updatePayStatus(paramMap);
 			return Result.ok();
 		} catch (YyghException e) {
@@ -63,18 +61,14 @@ public class HospitalController {
 		}
 	}
 
-	/**
-	 * 更新取消预约状态
-	 */
+	/** 更新取消预约状态 */
 	@PostMapping("/order/updateCancelStatus")
-	public Result updateCancelStatus(@RequestBody Map<String, Object> paramMap) {
+	public Result updateCancelStatus(@RequestBody UpdateCancelStatusDTO dto) {
 		try {
-			String key = (String) paramMap.get("sign");
-			//不加密直接调用
-			if(!key.equals(apiService.getSignKey())) {
+			if (!dto.getSign().equals(apiService.getSignKey())) {
 				throw new YyghException(ResultCodeEnum.SIGN_ERROR);
 			}
-
+			Map<String, Object> paramMap = JSONObject.parseObject(JSONObject.toJSONString(dto), Map.class);
 			hospitalService.updateCancelStatus(paramMap);
 			return Result.ok();
 		} catch (YyghException e) {
