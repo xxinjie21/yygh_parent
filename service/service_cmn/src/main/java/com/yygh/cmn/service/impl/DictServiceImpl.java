@@ -14,9 +14,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,15 +45,9 @@ public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements Di
         return dictList;
     }
 
-    //导出数据字典
+    //导出数据字典，返回Excel字节数组
     @Override
-    public void exportDictData(HttpServletResponse response) {
-        //设置下载信息
-        response.setContentType("application/vnd.ms-excel");
-        response.setCharacterEncoding("utf-8");
-        String fileName = "dict";
-        response.setHeader("Content-disposition", "attachment;filename=" + fileName + ".xlsx");
-        //查询数据库
+    public byte[] exportDictData() {
         List<Dict> dictList = baseMapper.selectList(null);
         List<DictEeVo> dictVoList = new ArrayList<>();
         for (Dict dict : dictList) {
@@ -60,14 +55,13 @@ public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements Di
             BeanUtils.copyProperties(dict, dictEeVo);
             dictVoList.add(dictEeVo);
         }
-        //调方法进行读写操作
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
         try {
-            EasyExcel.write(response.getOutputStream(), DictEeVo.class).sheet("数据字典").doWrite(dictVoList);
-        } catch (IOException e) {
+            EasyExcel.write(os, DictEeVo.class).sheet("数据字典").doWrite(dictVoList);
+        } catch (Exception e) {
             e.printStackTrace();
         }
-
-
+        return os.toByteArray();
     }
 
     //导入数据字典
@@ -76,7 +70,7 @@ public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements Di
     public void importDictData(MultipartFile file) {
         try {
             EasyExcel.read(file.getInputStream(), DictEeVo.class, new DictListener(baseMapper)).sheet().doRead();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

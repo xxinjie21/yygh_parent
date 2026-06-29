@@ -1,7 +1,6 @@
 package com.yygh.vo.acl;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -15,12 +14,12 @@ import java.io.Serializable;
  * @since 2019-11-08
  */
 @Data
-@ApiModel(description = "角色查询实体")
+@Schema(description = "角色查询实体")
 public class RoleQueryVo implements Serializable {
 	
 	private static final long serialVersionUID = 1L;
 	
-	@ApiModelProperty(value = "角色名称")
+	@Schema(description = "角色名称")
 	private String roleName;
 
 }

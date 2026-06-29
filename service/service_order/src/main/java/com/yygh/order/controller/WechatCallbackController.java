@@ -8,12 +8,10 @@ import com.yygh.order.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import javax.servlet.http.HttpServletRequest;
-import java.io.BufferedReader;
-import java.util.stream.Collectors;
 
 /**
  * 微信支付回调控制器
@@ -35,29 +33,26 @@ public class WechatCallbackController {
      * 微信侧支付成功后异步通知此接口，SDK自动完成签名验证和报文解密
      */
     @PostMapping("/callback/notify")
-    public String payNotify(HttpServletRequest request) {
+    public String payNotify(@RequestBody String body,
+                            @RequestHeader("Wechatpay-Serial") String serial,
+                            @RequestHeader("Wechatpay-Nonce") String nonce,
+                            @RequestHeader("Wechatpay-Signature") String signature,
+                            @RequestHeader("Wechatpay-Timestamp") String timestamp,
+                            @RequestHeader("Wechatpay-Signature-Type") String signType) {
         try {
-            // 读取请求体
-            String body = new BufferedReader(request.getReader())
-                    .lines()
-                    .collect(Collectors.joining("\n"));
-
-            // 构建验签参数
             RequestParam requestParam = new RequestParam.Builder()
-                    .serialNumber(request.getHeader("Wechatpay-Serial"))
-                    .nonce(request.getHeader("Wechatpay-Nonce"))
-                    .signature(request.getHeader("Wechatpay-Signature"))
-                    .timestamp(request.getHeader("Wechatpay-Timestamp"))
-                    .signType(request.getHeader("Wechatpay-Signature-Type"))
+                    .serialNumber(serial)
+                    .nonce(nonce)
+                    .signature(signature)
+                    .timestamp(timestamp)
+                    .signType(signType)
                     .body(body)
                     .build();
 
-            // SDK自动验签并解密回调数据
             Notification notification = notificationParser.parse(requestParam, Notification.class);
             String plaintext = notification.getPlaintext();
             log.info("微信支付回调验签通过：{}", plaintext);
 
-            // 解析支付结果并更新订单
             JSONObject result = JSONObject.parseObject(plaintext);
             String outTradeNo = result.getString("out_trade_no");
             String transactionId = result.getString("transaction_id");

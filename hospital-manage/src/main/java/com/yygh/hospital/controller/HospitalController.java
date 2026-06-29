@@ -2,24 +2,15 @@ package com.yygh.hospital.controller;
 
 import com.yygh.hospital.service.ApiService;
 import com.yygh.hospital.service.HospitalService;
-import com.yygh.hospital.util.HttpRequestHelper;
 import com.yygh.hospital.util.ResultCodeEnum;
 import com.yygh.hospital.util.YyghException;
 import com.yygh.hospital.util.Result;
-import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -27,7 +18,7 @@ import java.util.Map;
  * @author XXJ
  *
  */
-@Api(tags = "医院管理接口")
+@Tag(name = "医院管理接口")
 @RestController
 @RequiredArgsConstructor
 public class HospitalController {
@@ -38,13 +29,10 @@ public class HospitalController {
 
 	/**
 	 * 预约下单
-	 * @param request
-	 * @return
 	 */
 	@PostMapping("/order/submitOrder")
-	public Result AgreeAccountLendProject(HttpServletRequest request, HttpServletResponse response) {
+	public Result AgreeAccountLendProject(@RequestBody Map<String, Object> paramMap) {
 		try {
-			Map<String, Object> paramMap = HttpRequestHelper.switchMap(request.getParameterMap());
 			String key = (String) paramMap.get("sign");
 			//不加密直接调用
 			if(!key.equals(apiService.getSignKey())) {
@@ -59,13 +47,10 @@ public class HospitalController {
 
 	/**
 	 * 更新支付状态
-	 * @param request
-	 * @return
 	 */
 	@PostMapping("/order/updatePayStatus")
-	public Result updatePayStatus(HttpServletRequest request, HttpServletResponse response) {
+	public Result updatePayStatus(@RequestBody Map<String, Object> paramMap) {
 		try {
-			Map<String, Object> paramMap = HttpRequestHelper.switchMap(request.getParameterMap());
 			String key = (String) paramMap.get("sign");
 			//不加密直接调用
 			if(!key.equals(apiService.getSignKey())) {
@@ -80,13 +65,10 @@ public class HospitalController {
 
 	/**
 	 * 更新取消预约状态
-	 * @param request
-	 * @return
 	 */
 	@PostMapping("/order/updateCancelStatus")
-	public Result updateCancelStatus(HttpServletRequest request, HttpServletResponse response) {
+	public Result updateCancelStatus(@RequestBody Map<String, Object> paramMap) {
 		try {
-			Map<String, Object> paramMap = HttpRequestHelper.switchMap(request.getParameterMap());
 			String key = (String) paramMap.get("sign");
 			//不加密直接调用
 			if(!key.equals(apiService.getSignKey())) {
@@ -100,4 +82,3 @@ public class HospitalController {
 		}
 	}
 }
-

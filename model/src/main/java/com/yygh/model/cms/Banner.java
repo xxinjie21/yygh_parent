@@ -3,8 +3,7 @@ package com.yygh.model.cms;
 import com.yygh.model.base.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
@@ -16,25 +15,25 @@ import lombok.Data;
  * @since 2019-11-08
  */
 @Data
-@ApiModel(description = "首页Banner实体")
+@Schema(description = "首页Banner实体")
 @TableName("banner")
 public class Banner extends BaseEntity {
 	
 	private static final long serialVersionUID = 1L;
 	
-	@ApiModelProperty(value = "标题")
+	@Schema(description = "标题")
 	@TableField("title")
 	private String title;
 
-	@ApiModelProperty(value = "图片地址")
+	@Schema(description = "图片地址")
 	@TableField("image_url")
 	private String imageUrl;
 
-	@ApiModelProperty(value = "链接地址")
+	@Schema(description = "链接地址")
 	@TableField("link_url")
 	private String linkUrl;
 
-	@ApiModelProperty(value = "排序")
+	@Schema(description = "排序")
 	@TableField("sort")
 	private Integer sort;
 

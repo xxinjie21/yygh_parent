@@ -3,9 +3,7 @@ package com.yygh.hospital.controller;
 
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import org.springframework.web.util.WebUtils;
-
-import javax.servlet.http.HttpServletRequest;
+import org.springframework.ui.ModelMap;
 import java.util.Map;
 
 
@@ -42,9 +40,9 @@ public class BaseController {
         redirectAttributes.addFlashAttribute("messageType", 0);
     }
 
-    protected void failureMessage(String message, HttpServletRequest request) {
-        request.setAttribute("message", StringUtils.isEmpty(message) ? MESSAGE_SUCCESS : message);
-        request.setAttribute("messageType", 0);
+    protected void failureMessage(String message, ModelMap model) {
+        model.addAttribute("message", StringUtils.isEmpty(message) ? MESSAGE_SUCCESS : message);
+        model.addAttribute("messageType", 0);
     }
 
     /**
@@ -53,8 +51,8 @@ public class BaseController {
      * @param message
      * @param request
      */
-    protected String successPage(String message, HttpServletRequest request) {
-        request.setAttribute("messagePage", StringUtils.isEmpty(message) ? MESSAGE_SUCCESS : message);
+    protected String successPage(String message, ModelMap model) {
+        model.addAttribute("messagePage", StringUtils.isEmpty(message) ? MESSAGE_SUCCESS : message);
         return "common/successPage";
     }
 
@@ -65,14 +63,9 @@ public class BaseController {
      * @param request
      * @return
      */
-    protected String failurePage(String message, HttpServletRequest request) {
-        request.setAttribute("messagePage", StringUtils.isEmpty(message) ? MESSAGE_FAILURE : message);
+    protected String failurePage(String message, ModelMap model) {
+        model.addAttribute("messagePage", StringUtils.isEmpty(message) ? MESSAGE_FAILURE : message);
         return "common/failurePage";
-    }
-
-    protected Map<String, Object> getFilters(HttpServletRequest request) {
-        Map<String, Object> filters = WebUtils.getParametersStartingWith(request, "s_");
-        return filters;
     }
 
 }

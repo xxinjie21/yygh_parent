@@ -5,8 +5,8 @@ import com.yygh.hosp.service.HospitalService;
 import com.yygh.model.hosp.Hospital;
 import com.yygh.vo.hosp.HospitalQueryVo;
 import com.yygh.vo.hosp.HospitalSetQueryVo;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
-@Api(tags = "医院管理接口")
+@Tag(name = "医院管理接口")
 
 @RestController
 @RequestMapping("/admin/hosp/hospital")
@@ -30,7 +30,7 @@ public class HospitalController {
     private final HospitalService hospitalService;
 
     //医院列表(条件查询带分页)
-    @ApiOperation(value = "医院列表")
+    @Operation(summary = "医院列表")
     @GetMapping("list/{page}/{limit}")
     public Result listHosp(@PathVariable Integer page, @PathVariable Integer limit, HospitalQueryVo hospitalQueryVo){
        IPage<Hospital> page1 = hospitalService.selectHospPage(page,limit,hospitalQueryVo);
@@ -40,7 +40,7 @@ public class HospitalController {
     }
 
     //更新医院上线状态
-    @ApiOperation(value = "更新上线状态")
+    @Operation(summary = "更新上线状态")
     @GetMapping("updateHospStatus/{id}/{status}")
     public Result updateHospStatus(@PathVariable String id,@PathVariable Integer status){
         hospitalService.updateStatus(id,status);
@@ -48,7 +48,7 @@ public class HospitalController {
     }
 
     //医院详情信息
-    @ApiOperation(value = "获取医院详情")
+    @Operation(summary = "获取医院详情")
     @GetMapping("showHospDetail/{id}")
     public Result showHospDetail(@PathVariable String id){
         Map<String, Object> map= hospitalService.getHospById(id);

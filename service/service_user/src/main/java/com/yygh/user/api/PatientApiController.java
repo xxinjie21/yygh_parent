@@ -7,7 +7,6 @@ import com.yygh.user.service.PatientService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 /**
@@ -22,17 +21,15 @@ public class PatientApiController {
     private final PatientService patientService;
     //获取就诊人列表
     @GetMapping("auth/findAll")
-    public Result findAll(HttpServletRequest request) {
-        //获取当前登录用户id
-        Long userId = AuthContextHolder.getUserId(request);
+    public Result findAll(@RequestHeader("token") String token) {
+        Long userId = AuthContextHolder.getUserId(token);
         List<Patient> list = patientService.findAllUserId(userId);
         return Result.ok(list);
     }
     //添加就诊人
     @PostMapping("auth/save")
-    public Result savePatient(@RequestBody Patient patient, HttpServletRequest request) {
-        //获取当前登录用户id
-        Long userId = AuthContextHolder.getUserId(request);
+    public Result savePatient(@RequestBody Patient patient, @RequestHeader("token") String token) {
+        Long userId = AuthContextHolder.getUserId(token);
         patient.setUserId(userId);
         patientService.save(patient);
         return Result.ok();

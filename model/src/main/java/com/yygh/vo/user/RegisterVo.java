@@ -1,7 +1,6 @@
 package com.yygh.vo.user;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
@@ -10,15 +9,15 @@ import lombok.Data;
  * @author XXJ
  */
 @Data
-@ApiModel(description="注册对象")
+@Schema(description = "注册对象")
 public class RegisterVo {
 
-    @ApiModelProperty(value = "手机号")
+    @Schema(description = "手机号")
     private String mobile;
 
-    @ApiModelProperty(value = "密码")
+    @Schema(description = "密码")
     private String password;
 
-    @ApiModelProperty(value = "验证码")
+    @Schema(description = "验证码")
     private String code;
 }

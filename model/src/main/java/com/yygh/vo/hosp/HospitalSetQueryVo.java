@@ -1,7 +1,7 @@
 package com.yygh.vo.hosp;
 
 import com.baomidou.mybatisplus.annotation.TableField;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
@@ -12,9 +12,9 @@ import lombok.Data;
 @Data
 public class HospitalSetQueryVo {
 
-    @ApiModelProperty(value = "医院名称")
+    @Schema(description = "医院名称")
     private String hosname;
 
-    @ApiModelProperty(value = "医院编号")
+    @Schema(description = "医院编号")
     private String hoscode;
 }

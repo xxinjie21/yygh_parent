@@ -15,8 +15,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpSession;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.HashMap;
@@ -38,7 +36,7 @@ public class WxApiController {
     //返回生成二维码需要参数
     @GetMapping("getLoginParam")
     @ResponseBody
-    public Result genQrConnect(HttpSession session) throws UnsupportedEncodingException {
+    public Result genQrConnect() throws UnsupportedEncodingException {
         String redirectUri = URLEncoder.encode(ConstantWxPropertiesUtils.WX_OPEN_REDIRECT_URL, "UTF-8");
         Map<String, Object> map = new HashMap<>();
         map.put("appid", ConstantWxPropertiesUtils.WX_OPEN_APP_ID);

@@ -32,17 +32,16 @@ public class FileServiceImpl implements FileService {
             String fileName = file.getOriginalFilename();
             //生成随机唯一值，使用uuid，添加到文件名称里面
             String uuid = UUID.randomUUID().toString().replaceAll("-","");
-            fileName = uuid+fileName;
+            fileName = uuid + fileName;
             //按照当前日期，创建文件夹，上传到创建文件夹里面
             String timeUrl = new DateTime().toString("yyyy/MM/dd");
-            fileName = timeUrl+"/"+fileName;
+            fileName = timeUrl + "/" + fileName;
             //调用方法实现上传
             ossClient.putObject(bucketName, fileName, inputStream);
             // 关闭OSSClient。
             ossClient.shutdown();
             //上传之后文件路径
-            String url = "https://"+bucketName+"."+endpoint+"/"+fileName;
-            //返回
+            String url = "https://" + bucketName + "." + endpoint + "/" + fileName;
             return url;
         } catch (IOException e) {
             e.printStackTrace();

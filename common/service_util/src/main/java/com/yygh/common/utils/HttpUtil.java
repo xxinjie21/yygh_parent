@@ -27,17 +27,24 @@ public final class HttpUtil {
 	 * @return
 	 */
 	public static byte[] doPost(String strUrl, byte[] reqData) {
-		return send(strUrl, POST, reqData);
+		return doPost(strUrl, reqData, null);
+	}
+
+	/**
+	 * post 方式发送http请求（可指定Content-Type）
+	 */
+	public static byte[] doPost(String strUrl, byte[] reqData, String contentType) {
+		return send(strUrl, POST, reqData, contentType);
 	}
 
 	/**
 	 * get方式发送http请求.
-	 * 
+	 *
 	 * @param strUrl
 	 * @return
 	 */
 	public static byte[] doGet(String strUrl) {
-		return send(strUrl, GET, null);
+		return send(strUrl, GET, null, null);
 	}
 
 	/**
@@ -47,6 +54,17 @@ public final class HttpUtil {
 	 * @return
 	 */
 	public static byte[] send(String strUrl, String reqmethod, byte[] reqData) {
+		return send(strUrl, reqmethod, reqData, null);
+	}
+
+	/**
+	 * @param strUrl
+	 * @param reqmethod
+	 * @param reqData
+	 * @param contentType
+	 * @return
+	 */
+	public static byte[] send(String strUrl, String reqmethod, byte[] reqData, String contentType) {
 		try {
 			URL url = new URL(strUrl);
 			HttpURLConnection httpcon = (HttpURLConnection) url.openConnection();
@@ -57,6 +75,9 @@ public final class HttpUtil {
 			httpcon.setConnectTimeout(CONN_TIMEOUT);
 			httpcon.setReadTimeout(READ_TIMEOUT);
 			httpcon.setRequestMethod(reqmethod);
+			if (contentType != null && !contentType.isEmpty()) {
+				httpcon.setRequestProperty("Content-Type", contentType);
+			}
 			httpcon.connect();
 			if (reqmethod.equalsIgnoreCase(POST)) {
 				OutputStream os = httpcon.getOutputStream();

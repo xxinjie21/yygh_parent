@@ -1,8 +1,7 @@
 package com.yygh.hospital.model;
 
 import com.baomidou.mybatisplus.annotation.TableName;
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -15,19 +14,19 @@ import java.io.Serializable;
  * @author XXJ
  */
 @Data
-@ApiModel(description = "HospitalSet")
+@Schema(name = "HospitalSet")
 @TableName("hospital_set")
 public class HospitalSet extends BaseEntity {
 	
 	private static final long serialVersionUID = 1L;
 
-	@ApiModelProperty(value = "医院编号")
+	@Schema(description = "医院编号")
 	private String hoscode;
 
-	@ApiModelProperty(value = "签名秘钥")
+	@Schema(description = "签名秘钥")
 	private String signKey;
 
-	@ApiModelProperty(value = "api基础路径")
+	@Schema(description = "api基础路径")
 	private String apiUrl;
 
 }

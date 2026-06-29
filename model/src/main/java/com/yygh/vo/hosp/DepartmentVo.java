@@ -2,8 +2,7 @@ package com.yygh.vo.hosp;
 
 import com.yygh.model.hosp.Department;
 import com.baomidou.mybatisplus.annotation.TableField;
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.util.List;
@@ -14,16 +13,16 @@ import java.util.List;
  * @author XXJ
  */
 @Data
-@ApiModel(description = "Department")
+@Schema(description = "Department")
 public class DepartmentVo {
 
-	@ApiModelProperty(value = "科室编号")
+	@Schema(description = "科室编号")
 	private String depcode;
 
-	@ApiModelProperty(value = "科室名称")
+	@Schema(description = "科室名称")
 	private String depname;
 
-	@ApiModelProperty(value = "下级节点")
+	@Schema(description = "下级节点")
 	private List<DepartmentVo> children;
 
 }

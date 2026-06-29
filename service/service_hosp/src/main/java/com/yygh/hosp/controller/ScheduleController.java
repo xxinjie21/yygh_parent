@@ -3,7 +3,7 @@ package com.yygh.hosp.controller;
 import com.yygh.common.result.Result;
 import com.yygh.hosp.service.ScheduleService;
 import com.yygh.model.hosp.Schedule;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,7 +24,7 @@ public class ScheduleController {
     private final ScheduleService scheduleService;
 
     //根据医院编号和科室编号,查询排班规则数据
-    @ApiOperation(value ="查询排班规则数据")
+    @Operation(summary ="查询排班规则数据")
     @GetMapping("getScheduleRule/{page}/{limit}/{hoscode}/{depcode}")
     public Result getScheduleRule(@PathVariable long page,
                                   @PathVariable long limit,
@@ -36,7 +36,7 @@ public class ScheduleController {
     }
 
     //根据医院编号,科室编号和工作日期查询排班详细信息
-    @ApiOperation(value = "查询排班详细信息")
+    @Operation(summary = "查询排班详细信息")
     @GetMapping("getScheduleDetail/{hoscode}/{depcode}/{workDate}")
     public Result getScheduleDetail( @PathVariable String hoscode,
                                      @PathVariable String depcode,

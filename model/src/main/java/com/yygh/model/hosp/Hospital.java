@@ -4,8 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.yygh.model.base.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
@@ -14,53 +13,53 @@ import lombok.Data;
  * @author XXJ
  */
 @Data
-@ApiModel(description = "医院信息")
+@Schema(description = "医院信息")
 @TableName("hospital")
 public class Hospital extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
 
-    @ApiModelProperty(value = "医院编号")
+    @Schema(description = "医院编号")
     @TableField("hoscode")
     private String hoscode;
 
-    @ApiModelProperty(value = "医院名称")
+    @Schema(description = "医院名称")
     @TableField("hosname")
     private String hosname;
 
-    @ApiModelProperty(value = "医院类型")
+    @Schema(description = "医院类型")
     @TableField("hostype")
     private String hostype;
 
-    @ApiModelProperty(value = "省code")
+    @Schema(description = "省code")
     @TableField("province_code")
     private String provinceCode;
 
-    @ApiModelProperty(value = "市code")
+    @Schema(description = "市code")
     @TableField("city_code")
     private String cityCode;
 
-    @ApiModelProperty(value = "区code")
+    @Schema(description = "区code")
     @TableField("district_code")
     private String districtCode;
 
-    @ApiModelProperty(value = "详情地址")
+    @Schema(description = "详情地址")
     @TableField("address")
     private String address;
 
-    @ApiModelProperty(value = "医院logo")
+    @Schema(description = "医院logo")
     @TableField("logo_data")
     private String logoData;
 
-    @ApiModelProperty(value = "医院简介")
+    @Schema(description = "医院简介")
     @TableField("intro")
     private String intro;
 
-    @ApiModelProperty(value = "坐车路线")
+    @Schema(description = "坐车路线")
     @TableField("route")
     private String route;
 
-    @ApiModelProperty(value = "状态 0：未上线 1：已上线")
+    @Schema(description = "状态 0：未上线 1：已上线")
     @TableField("status")
     private Integer status;
 
@@ -68,7 +67,7 @@ public class Hospital extends BaseEntity {
      * 预约规则（JSON字符串存储）
      * 数据库中存JSON字符串，通过getter/setter自动转换
      */
-    @ApiModelProperty(value = "预约规则")
+    @Schema(description = "预约规则")
     @TableField("booking_rule")
     private String bookingRule;
 

@@ -1,8 +1,7 @@
 package com.yygh.common.exception;
 
 import com.yygh.common.result.ResultCodeEnum;
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
@@ -11,10 +10,10 @@ import lombok.Data;
  * @author XXJ
  */
 @Data
-@ApiModel(value = "自定义全局异常类")
+@Schema(name = "自定义全局异常类")
 public class YyghException extends RuntimeException {
 
-    @ApiModelProperty(value = "异常状态码")
+    @Schema(description = "异常状态码")
     private Integer code;
 
     public Integer getCode() {

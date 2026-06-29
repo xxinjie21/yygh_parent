@@ -1,7 +1,6 @@
 package com.yygh.vo.user;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
@@ -10,18 +9,18 @@ import lombok.Data;
  * @author XXJ
  */
 @Data
-@ApiModel(description="登录对象")
+@Schema(description = "登录对象")
 public class LoginVo {
 
-    @ApiModelProperty(value = "openid")
+    @Schema(description = "openid")
     private String openid;
 
-    @ApiModelProperty(value = "手机号")
+    @Schema(description = "手机号")
     private String phone;
 
-    @ApiModelProperty(value = "密码")
+    @Schema(description = "密码")
     private String code;
 
-    @ApiModelProperty(value = "IP")
+    @Schema(description = "IP")
     private String ip;
 }

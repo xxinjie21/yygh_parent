@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.*;
-import javax.servlet.http.HttpServletRequest;
 
 
 /**
@@ -28,7 +27,7 @@ public class IndexController {
 	 * @return
 	 */
 	@RequestMapping(value = "/")
-	public String index(ModelMap model, HttpServletRequest request) {
+	public String index(ModelMap model) {
 
 		return PAGE_INDEX;
 	}

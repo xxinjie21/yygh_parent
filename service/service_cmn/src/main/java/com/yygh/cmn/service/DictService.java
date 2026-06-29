@@ -2,9 +2,8 @@ package com.yygh.cmn.service;
 
 import com.yygh.model.cmn.Dict;
 import com.baomidou.mybatisplus.extension.service.IService;
-import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.http.HttpServletResponse;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 /**
@@ -13,10 +12,10 @@ import java.util.List;
  */
 public interface DictService extends IService<Dict> {
     List<Dict> findChlidData(Long id);
-    //导出数据字典的接口
-    void exportDictData(HttpServletResponse response);
+    //导出数据字典，返回Excel字节数组
+    byte[] exportDictData();
 
-    //导入数据字典的接口
+    //导入数据字典
     void importDictData(MultipartFile file);
 
     //根据dictcode和value查询

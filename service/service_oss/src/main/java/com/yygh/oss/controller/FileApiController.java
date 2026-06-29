@@ -22,7 +22,6 @@ public class FileApiController {
     //上传文件到阿里云oss
     @PostMapping("fileUpload")
     public Result fileUpload(MultipartFile file) {
-        //获取上传文件
         String url = fileService.upload(file);
         return Result.ok(url);
     }

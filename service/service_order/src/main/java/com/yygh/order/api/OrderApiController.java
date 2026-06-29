@@ -12,16 +12,15 @@ import com.yygh.vo.order.OrderQueryVo;
 import com.yygh.vo.user.UserInfoQueryVo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
 
-@Api(tags = "订单接口")
+@Tag(name = "订单接口")
 @RestController
 @RequestMapping("/api/order/orderInfo")
 @RequiredArgsConstructor
@@ -50,9 +49,8 @@ public class OrderApiController {
     //订单列表（条件查询带分页）
     @GetMapping("auth/{page}/{limit}")
     public Result list(@PathVariable Long page, @PathVariable Long limit,
-                       OrderQueryVo orderQueryVo, HttpServletRequest request) {
-        //设置当前用户id
-        orderQueryVo.setUserId(AuthContextHolder.getUserId(request));
+                       OrderQueryVo orderQueryVo, @RequestHeader("token") String token) {
+        orderQueryVo.setUserId(AuthContextHolder.getUserId(token));
         Page<OrderInfo> pageParam = new Page<>(page, limit);
         IPage<OrderInfo> pageModel =
                 orderService.selectPage(pageParam, orderQueryVo);

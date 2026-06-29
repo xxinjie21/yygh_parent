@@ -3,9 +3,14 @@ import com.yygh.cmn.service.DictService;
 import com.yygh.common.result.Result;
 import com.yygh.model.cmn.Dict;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import javax.servlet.http.HttpServletResponse;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 @RestController
@@ -19,17 +24,23 @@ import java.util.Map;
 public class DictController {
 
     private final DictService dictService;
-    //导入数据字典的接口
+    //导入数据字典（文件上传）
     @PostMapping("importData")
     public Result importDict(MultipartFile file) {
         dictService.importDictData(file);
         return Result.ok();
     }
 
-    //导出数据字典的接口
+    //导出数据字典，返回Excel文件
     @GetMapping("exportData")
-    public void exportDict(HttpServletResponse response) {
-        dictService.exportDictData(response);
+    public ResponseEntity<byte[]> exportDict() {
+        byte[] bytes = dictService.exportDictData();
+        String fileName = "dict.xlsx";
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.ms-excel"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20"))
+                .body(bytes);
     }
 
     //根据dictCode获取下级节点
