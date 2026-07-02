@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.joda.time.DateTime;
 import org.springframework.beans.BeanUtils;
 import org.redisson.api.RAtomicLong;
+import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -68,98 +69,106 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
             throw new YyghException(ResultCodeEnum.TIME_NO);
         }
 
-        // 使用Redisson RAtomicLong原子扣减号源
-        String redisKey = "schedule:" + scheduleOrderVo.getHosScheduleId() + ":availableNumber";
-        RAtomicLong atomicLong = redissonClient.getAtomicLong(redisKey);
-        // 初始化：首次使用或Redis重启后，从排班数据同步号源
-        if (!atomicLong.isExists()) {
-            atomicLong.set(scheduleOrderVo.getAvailableNumber());
+        // Redisson分布式锁：防止同一排班并发抢号
+        String lockKey = "lock:schedule:" + scheduleOrderVo.getHosScheduleId();
+        RLock lock = redissonClient.getLock(lockKey);
+        lock.lock();
+        try {
+            // 使用Redisson RAtomicLong原子扣减号源
+            String redisKey = "schedule:" + scheduleOrderVo.getHosScheduleId() + ":availableNumber";
+            RAtomicLong atomicLong = redissonClient.getAtomicLong(redisKey);
+            // 初始化：首次使用或Redis重启后，从排班数据同步号源
+            if (!atomicLong.isExists()) {
+                atomicLong.set(scheduleOrderVo.getAvailableNumber());
+            }
+            long afterDecrement = atomicLong.addAndGet(-1);
+            if (afterDecrement < 0) {
+                // 号源不足，回退
+                atomicLong.addAndGet(1);
+                throw new YyghException(ResultCodeEnum.NUMBER_NO);
+            }
+            log.info("号源扣减成功，排班编号：{}，Redis键：{}，剩余：{}", scheduleOrderVo.getHosScheduleId(), redisKey, afterDecrement);
+
+            // 获取签名信息
+            SignInfoVo signInfoVo = hospitalFeignClient.getSignInfoVo(scheduleOrderVo.getHoscode());
+
+            // 添加到订单表
+            OrderInfo orderInfo = new OrderInfo();
+            BeanUtils.copyProperties(scheduleOrderVo, orderInfo);
+            // 设置订单其他数据
+            String outTradeNo = System.currentTimeMillis() + "" + new Random().nextInt(100);
+            orderInfo.setOutTradeNo(outTradeNo);
+            orderInfo.setScheduleId(scheduleId);
+            orderInfo.setUserId(patient.getUserId());
+            orderInfo.setPatientId(patientId);
+            orderInfo.setPatientName(patient.getName());
+            orderInfo.setPatientPhone(patient.getPhone());
+            orderInfo.setOrderStatus(OrderStatusEnum.UNPAID.getStatus());
+            baseMapper.insert(orderInfo);
+
+            // 调用医院接口，实现预约挂号操作
+            Map<String, Object> paramMap = new HashMap<>();
+            paramMap.put("hoscode", orderInfo.getHoscode());
+            paramMap.put("depcode", orderInfo.getDepcode());
+            paramMap.put("hosScheduleId", scheduleOrderVo.getHosScheduleId());
+            paramMap.put("reserveDate", new DateTime(orderInfo.getReserveDate()).toString("yyyy-MM-dd"));
+            paramMap.put("reserveTime", orderInfo.getReserveTime());
+            paramMap.put("amount", orderInfo.getAmount());
+            paramMap.put("name", patient.getName());
+            paramMap.put("certificatesType", patient.getCertificatesType());
+            paramMap.put("certificatesNo", patient.getCertificatesNo());
+            paramMap.put("sex", patient.getSex());
+            paramMap.put("birthdate", patient.getBirthdate());
+            paramMap.put("phone", patient.getPhone());
+            paramMap.put("isMarry", patient.getIsMarry());
+            paramMap.put("provinceCode", patient.getProvinceCode());
+            paramMap.put("cityCode", patient.getCityCode());
+            paramMap.put("districtCode", patient.getDistrictCode());
+            paramMap.put("address", patient.getAddress());
+            // 联系人
+            paramMap.put("contactsName", patient.getContactsName());
+            paramMap.put("contactsCertificatesType", patient.getContactsCertificatesType());
+            paramMap.put("contactsCertificatesNo", patient.getContactsCertificatesNo());
+            paramMap.put("contactsPhone", patient.getContactsPhone());
+            paramMap.put("timestamp", HttpRequestHelper.getTimestamp());
+            String sign = signInfoVo.getSignKey();
+            paramMap.put("sign", sign);
+
+            // 请求医院系统接口
+            JSONObject hospitalResult = HttpRequestHelper.sendRequest(paramMap,
+                    signInfoVo.getApiUrl() + "/order/submitOrder");
+
+            if (hospitalResult.getInteger("code") == 200) {
+                JSONObject jsonObject = hospitalResult.getJSONObject("data");
+                // 预约记录唯一标识（医院预约记录主键）
+                String hosRecordId = jsonObject.getString("hosRecordId");
+                // 预约序号
+                Integer number = jsonObject.getInteger("number");
+                // 取号时间
+                String fetchTime = jsonObject.getString("fetchTime");
+                // 取号地址
+                String fetchAddress = jsonObject.getString("fetchAddress");
+                // 更新订单
+                orderInfo.setHosRecordId(hosRecordId);
+                orderInfo.setNumber(number);
+                orderInfo.setFetchTime(fetchTime);
+                orderInfo.setFetchAddress(fetchAddress);
+                baseMapper.updateById(orderInfo);
+
+                // 同步更新MySQL中的availableNumber（通过Feign调用service_hosp）
+                hospitalFeignClient.updateAvailableNumber(scheduleOrderVo.getHosScheduleId(), -1);
+                log.info("订单创建成功，订单号：{}，医院编号：{}", outTradeNo, scheduleOrderVo.getHoscode());
+
+                return orderInfo.getId();
+            } else {
+                // 医院接口调用失败，回退号源
+                redissonClient.getAtomicLong(redisKey).addAndGet(1);
+                log.error("医院接口调用失败，号源已回退，排班编号：{}", scheduleOrderVo.getHosScheduleId());
+                throw new YyghException(hospitalResult.getString("message"), ResultCodeEnum.FAIL.getCode());
+            }
+        } finally {
+            lock.unlock();
         }
-        long afterDecrement = atomicLong.addAndGet(-1);
-        if (afterDecrement < 0) {
-            // 号源不足，回退
-            atomicLong.addAndGet(1);
-            throw new YyghException(ResultCodeEnum.NUMBER_NO);
-        }
-        log.info("号源扣减成功，排班编号：{}，Redis键：{}，剩余：{}", scheduleOrderVo.getHosScheduleId(), redisKey, afterDecrement);
-
-        // 获取签名信息
-        SignInfoVo signInfoVo = hospitalFeignClient.getSignInfoVo(scheduleOrderVo.getHoscode());
-
-        // 添加到订单表
-        OrderInfo orderInfo = new OrderInfo();
-        BeanUtils.copyProperties(scheduleOrderVo, orderInfo);
-        // 设置订单其他数据
-        String outTradeNo = System.currentTimeMillis() + "" + new Random().nextInt(100);
-        orderInfo.setOutTradeNo(outTradeNo);
-        orderInfo.setScheduleId(scheduleId);
-        orderInfo.setUserId(patient.getUserId());
-        orderInfo.setPatientId(patientId);
-        orderInfo.setPatientName(patient.getName());
-        orderInfo.setPatientPhone(patient.getPhone());
-        orderInfo.setOrderStatus(OrderStatusEnum.UNPAID.getStatus());
-        baseMapper.insert(orderInfo);
-
-        // 调用医院接口，实现预约挂号操作
-        Map<String, Object> paramMap = new HashMap<>();
-        paramMap.put("hoscode", orderInfo.getHoscode());
-        paramMap.put("depcode", orderInfo.getDepcode());
-        paramMap.put("hosScheduleId", scheduleOrderVo.getHosScheduleId());
-        paramMap.put("reserveDate", new DateTime(orderInfo.getReserveDate()).toString("yyyy-MM-dd"));
-        paramMap.put("reserveTime", orderInfo.getReserveTime());
-        paramMap.put("amount", orderInfo.getAmount());
-        paramMap.put("name", patient.getName());
-        paramMap.put("certificatesType", patient.getCertificatesType());
-        paramMap.put("certificatesNo", patient.getCertificatesNo());
-        paramMap.put("sex", patient.getSex());
-        paramMap.put("birthdate", patient.getBirthdate());
-        paramMap.put("phone", patient.getPhone());
-        paramMap.put("isMarry", patient.getIsMarry());
-        paramMap.put("provinceCode", patient.getProvinceCode());
-        paramMap.put("cityCode", patient.getCityCode());
-        paramMap.put("districtCode", patient.getDistrictCode());
-        paramMap.put("address", patient.getAddress());
-        // 联系人
-        paramMap.put("contactsName", patient.getContactsName());
-        paramMap.put("contactsCertificatesType", patient.getContactsCertificatesType());
-        paramMap.put("contactsCertificatesNo", patient.getContactsCertificatesNo());
-        paramMap.put("contactsPhone", patient.getContactsPhone());
-        paramMap.put("timestamp", HttpRequestHelper.getTimestamp());
-        String sign = signInfoVo.getSignKey();
-        paramMap.put("sign", sign);
-
-        // 请求医院系统接口
-        JSONObject hospitalResult = HttpRequestHelper.sendRequest(paramMap,
-                signInfoVo.getApiUrl() + "/order/submitOrder");
-
-        if (hospitalResult.getInteger("code") == 200) {
-            JSONObject jsonObject = hospitalResult.getJSONObject("data");
-            // 预约记录唯一标识（医院预约记录主键）
-            String hosRecordId = jsonObject.getString("hosRecordId");
-            // 预约序号
-            Integer number = jsonObject.getInteger("number");
-            // 取号时间
-            String fetchTime = jsonObject.getString("fetchTime");
-            // 取号地址
-            String fetchAddress = jsonObject.getString("fetchAddress");
-            // 更新订单
-            orderInfo.setHosRecordId(hosRecordId);
-            orderInfo.setNumber(number);
-            orderInfo.setFetchTime(fetchTime);
-            orderInfo.setFetchAddress(fetchAddress);
-            baseMapper.updateById(orderInfo);
-
-            // 同步更新MySQL中的availableNumber（通过Feign调用service_hosp）
-            hospitalFeignClient.updateAvailableNumber(scheduleOrderVo.getHosScheduleId(), -1);
-            log.info("订单创建成功，订单号：{}，医院编号：{}", outTradeNo, scheduleOrderVo.getHoscode());
-
-        } else {
-            // 医院接口调用失败，回退号源
-            redissonClient.getAtomicLong(redisKey).addAndGet(1);
-            log.error("医院接口调用失败，号源已回退，排班编号：{}", scheduleOrderVo.getHosScheduleId());
-            throw new YyghException(hospitalResult.getString("message"), ResultCodeEnum.FAIL.getCode());
-        }
-        return orderInfo.getId();
     }
 
     // 根据订单id查询订单详情
