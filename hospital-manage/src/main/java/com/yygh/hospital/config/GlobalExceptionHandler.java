@@ -1,6 +1,6 @@
 package com.yygh.hospital.config;
 
-import com.yygh.hospital.util.YyghException;
+import com.yygh.common.exception.YyghException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;

@@ -2,6 +2,7 @@ package com.yygh.hospital.util;
 
 import com.alibaba.fastjson.JSONObject;
 import com.yygh.common.utils.HttpUtil;
+import com.yygh.common.utils.MD5;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Date;
@@ -16,8 +17,6 @@ import java.util.TreeMap;
  */
 @Slf4j
 public class HttpRequestHelper {
-
-    //private final static String signKey = "09c1ff67d1ae4999e137f34b0dff1046";
 
     public static void main(String[] args) {
         Map<String, Object> paramMap = new HashMap<>();
@@ -57,7 +56,6 @@ public class HttpRequestHelper {
     public static boolean isSignEquals(Map<String, Object> paramMap, String signKey) {
         String sign = (String)paramMap.get("sign");
         String md5Str = getSign(paramMap, signKey);
-//        String md5Str = MD5.encrypt(signKey);
         if(!sign.equals(md5Str)) {
             return false;
         }

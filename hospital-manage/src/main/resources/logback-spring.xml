@@ -77,7 +77,7 @@
 
     <!--开发环境:打印控制台-->
     <springProfile name="dev">
-        <logger name="com.guli" level="INFO" />
+        <logger name="com.yygh" level="INFO" />
         <root level="INFO">
             <appender-ref ref="CONSOLE" />
             <appender-ref ref="INFO_FILE" />
@@ -88,7 +88,7 @@
 
     <!--生产环境:输出到文件-->
     <springProfile name="pro">
-        <logger name="com.guli" level="WARN" />
+        <logger name="com.yygh" level="WARN" />
         <root level="INFO">
             <appender-ref ref="ERROR_FILE" />
             <appender-ref ref="WARN_FILE" />
