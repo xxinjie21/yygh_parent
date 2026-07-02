@@ -77,7 +77,7 @@
 
     <!--开发环境:打印控制台-->
     <springProfile name="dev">
-        <logger name="com.guli" level="INFO" />
+        <logger name="com.yygh" level="INFO" />
         <root level="INFO">
             <appender-ref ref="CONSOLE" />
             <appender-ref ref="INFO_FILE" />
