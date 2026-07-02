@@ -31,7 +31,6 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>easyexcel</artifactId>
-            <version>2.1.1</version>
         </dependency>
         <dependency>
             <groupId>org.springdoc</groupId>

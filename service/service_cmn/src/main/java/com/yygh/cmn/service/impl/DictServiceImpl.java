@@ -11,6 +11,7 @@ import com.yygh.vo.cmn.DictVo;
 import com.yygh.common.utils.BeanCopyUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.BeanUtils;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -106,9 +107,7 @@ public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements Di
 
     /** 获取代理对象，避免内部调用绕过 @Cacheable */
     private DictServiceImpl getProxy() {
-        return org.springframework.aop.framework.AopContext.currentProxy() != null
-                ? (DictServiceImpl) org.springframework.aop.framework.AopContext.currentProxy()
-                : this;
+        return AopContext.currentProxy() != null ? (DictServiceImpl) AopContext.currentProxy() : this;
     }
 
     private Dict getDictByDictCode(String dictCode) {

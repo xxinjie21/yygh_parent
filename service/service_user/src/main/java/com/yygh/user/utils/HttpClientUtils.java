@@ -243,21 +243,6 @@ public class HttpClientUtils {
     }
 
     /**
-     * 从 response 里获取 charset
-     */
-    @SuppressWarnings("unused")
-    private static String getCharsetFromResponse(HttpResponse ressponse) {
-        // Content-Type:text/html; charset=GBK
-        if (ressponse.getEntity() != null  && ressponse.getEntity().getContentType() != null && ressponse.getEntity().getContentType().getValue() != null) {
-            String contentType = ressponse.getEntity().getContentType().getValue();
-            if (contentType.contains("charset=")) {
-                return contentType.substring(contentType.indexOf("charset=") + 8);
-            }
-        }
-        return null;
-    }
-
-    /**
      * 创建 SSL连接
      * @return
      * @throws GeneralSecurityException
