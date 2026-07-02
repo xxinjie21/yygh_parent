@@ -1,11 +1,94 @@
 # 医院预约挂号系统 - 面试题与答案
 
+---
+
+## 一分钟项目介绍（面试开场白）
+
+尚医通是一个**分布式医疗预约挂号平台**，基于 Spring Cloud 微服务架构，拆分为用户、号源、订单、支付、排班五大微服务，实现从科室查询、线上预约、微信支付到订单对账的全流程数字化。
+
+**技术栈**：Java 17 + Spring Boot 3.2 + Spring Cloud Gateway + Nacos + Sentinel + OpenFeign + MyBatis-Plus + MySQL + Redis + Redisson + RabbitMQ + EasyExcel + JWT
+
+**我在其中负责后端全模块开发，核心实现了：**
+
+1. **号源高并发三层防护**：RLock 分布式锁 + RAtomicLong 原子扣减 + MyBatis-Plus 乐观锁，防止超卖
+2. **支付订单最终一致性**：接口幂等校验 + RabbitMQ 异步消息 + 定时对账补偿，保障数据一致
+3. **网关统一鉴权**：JWT + Gateway 全局过滤器 + 接口签名校验，拦截越权请求
+4. **Feign 熔断降级**：全部 Feign 客户端实现 FallbackFactory + Sentinel 流量控制，防止级联故障
+5. **EasyExcel 批量导入**：流式读取 + MyBatis-Plus saveBatch 批量插入，大数据量高效处理
+6. **缓存防护体系**：TTL 随机化防雪崩 + 逻辑过期 + Redisson 互斥锁防击穿，降低 DB 压力
+
+---
+
+## 详细项目介绍
+
+### 项目背景
+
+尚医通是一个面向患者的在线医疗预约平台。传统医院挂号依赖线下窗口，患者排队时间长、号源信息不透明。平台将医院信息、科室排班、预约挂号、支付退款全链路线上化，提升就医效率。
+
+### 技术架构
+
+```
+前端（Vue/Nuxt） → Gateway（8888） → Nacos 服务注册发现
+                    ↓
+  ┌────────┬────────┬────────┬────────┬──────────┐
+  │用户服务│医院服务│订单服务│支付服务│数据字典服务│
+  │ 8160   │ 8201   │ 8206   │ 8206   │ 8202      │
+  └────────┴────────┴────────┴────────┴──────────┘
+        ↓         ↓         ↓         ↓
+     MySQL    Redis    RabbitMQ   阿里云OSS
+     (分库)   (缓存/锁) (消息队列)  (文件存储)
+```
+
+| 服务 | 端口 | 职责 |
+|------|------|------|
+| service_user | 8160 | 用户登录、微信 OAuth、就诊人 CRUD |
+| service_hosp | 8201 | 医院/科室/排班管理、对外医院 API |
+| service_order | 8206 | 预约下单、号源扣减、微信支付、退款 |
+| service_cmn | 8202 | 数据字典（省份、医院等级、证件类型） |
+| server_gateway | 8888 | API 网关 — 路由转发、JWT 鉴权、CORS |
+| hospital-manage | 9998 | 医院后台 — 模拟医院端订单/排班管理 |
+
+### 核心技术实现
+
+**号源高并发三层防护（核心亮点）**
+
+医院放号瞬间大量用户同时抢号，采用三层防护防止超卖：
+- **第一层 RLock 分布式锁**：按排班编号加锁，同一排班串行化，不同排班互不阻塞
+- **第二层 RAtomicLong CAS 原子扣减**：`addAndGet(-1)`，结果 < 0 则 `addAndGet(1)` 回退
+- **第三层 @Version 乐观锁兜底**：数据库层最后防线
+
+**支付最终一致性**
+
+微信支付异步回调 → 本地订单更新，通过三层保障：
+- **幂等校验**：`selectCount` 检查 `outTradeNo`，已处理直接跳过
+- **RabbitMQ 异步通知**：订单状态变更通过 MQ 异步同步，手动 ACK 防丢失
+- **定时对账补偿**：每 10 分钟取消超时订单 + 每日凌晨 2 点与微信对账
+
+**缓存防护体系**
+
+- **雪崩防护**：Redis TTL 600~780s 随机化，防止大量缓存同时过期
+- **击穿防护**：`CacheBreakdownUtil` 逻辑过期 + Redisson 互斥锁，过期后单个线程重建、其他返回旧数据
+- **更新策略**：Cache-Aside 模式，`@Cacheable` 读、`@CacheEvict` 写时删缓存
+
+**EasyExcel 批量导入**
+
+`DictListener` 继承 `AnalysisEventListener` 流式逐行解析 → `saveBatch()` 批量写入，避免 OOM 和逐行 insert 性能瓶颈。
+
+### 项目难点与收获
+
+1. **并发控制**：从单机锁到 Redis 原子操作到 Redisson 分布式锁，理解不同粒度锁的适用场景
+2. **分布式一致性**：理解 CAP 理论在支付场景的取舍，采用最终一致性 + 补偿机制
+3. **微服务治理**：Gateway 鉴权、Feign 熔断、Sentinel 限流，形成完整的服务保护链
+4. **Spring Boot 3 迁移**：掌握 javax → jakarta、springfox → springdoc、配置文件等升级要点
+
+---
+
 ## 目录
 
 | 序号 | 题目分类 | 题目数量 |
 | :--- | :--- | :--- |
 | 1 | 微服务架构 | 5 |
-| 2 | 高并发处理 | 6 |
+| 2 | 高并发处理 | 4 |
 | 3 | 数据库设计 | 5 |
 | 4 | 分布式事务 | 4 |
 | 5 | 安全与性能 | 5 |
@@ -15,7 +98,7 @@
 | 9 | Redis高级特性 | 5 |
 | 10 | 项目业务场景 | 7 |
 | 11 | 项目经验问题 | 5 |
-| **合计** | | **55** |
+| **合计** | | **53** |
 
 ---
 
@@ -135,72 +218,114 @@ public class DictFeignFallbackFactory implements FallbackFactory<DictFeignClient
 ### 2.1 如何解决高并发号源超卖问题？
 
 **答案**：
-采用三层防护机制：
+采用「RLock 分布式锁 + RAtomicLong 原子扣减 + 乐观锁兜底」三层防护机制：
 
-1. **Redis 预扣库存**：使用 Redisson RAtomicLong 实现原子扣减
-2. **分布式锁**：使用 Redisson 分布式锁防止重复请求
-3. **数据库乐观锁**：使用 version 字段进行乐观锁更新
+1. **第一层 — Redisson RLock 分布式锁**：按排班编号加锁，同一排班并发请求串行化，防止超卖
+2. **第二层 — RAtomicLong CAS 原子扣减**：Redis 无锁原子操作，`addAndGet(-1)` < 0 时自动回退 `+1`
+3. **第三层 — MyBatis-Plus @Version 乐观锁兜底**：数据库层最后一道防线，防止并发更新覆盖
 
 **核心代码**：
 ```java
-RAtomicLong atomicLong = redissonClient.getAtomicLong(redisKey);
-boolean success = atomicLong.compareAndSet(expected, expected - 1);
+// 三层防护核心代码
+String redisKey = "schedule:" + hosScheduleId + ":availableNumber";
+String lockKey = "lock:schedule:" + hosScheduleId;
+RLock lock = redissonClient.getLock(lockKey);
+lock.lock();
+try {
+    // 第一层：RAtomicLong CAS 原子扣减
+    RAtomicLong atomicLong = redissonClient.getAtomicLong(redisKey);
+    if (!atomicLong.isExists()) {
+        atomicLong.set(availableNumber);
+    }
+    long afterDecrement = atomicLong.addAndGet(-1);
+    if (afterDecrement < 0) {
+        atomicLong.addAndGet(1); // 回退
+        throw new YyghException(ResultCodeEnum.NUMBER_NO);
+    }
+    // 第二层：插入订单 + 调用医院接口
+    baseMapper.insert(orderInfo);
+    JSONObject result = HttpRequestHelper.sendRequest(paramMap, apiUrl + "/order/submitOrder");
+    if (result.getInteger("code") != 200) {
+        atomicLong.addAndGet(1); // 失败回退
+        throw new YyghException(result.getString("message"));
+    }
+} finally {
+    lock.unlock(); // 第三层：释放分布式锁
+}
 ```
 
 **参考文件**：[OrderServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/yygh/order/service/impl/OrderServiceImpl.java)
 
 ---
 
-### 2.2 Redis 缓存策略有哪些？
+### 2.2 项目中缓存防护体系如何解决雪崩、击穿？
 
 **答案**：
-常见的缓存策略：
+项目针对热门医院详情页等高 QPS 场景，实现多层缓存防护方案。
 
-1. **Cache-Aside**：应用程序直接与数据库和缓存交互
-2. **Write-Through**：写入时同时更新数据库和缓存
-3. **Write-Behind**：写入时只更新缓存，后台异步更新数据库
+**1. 缓存雪崩防护 — TTL 随机化**
 
-**本项目使用**：Cache-Aside 策略
+大量缓存同时过期会导致流量瞬间压垮数据库。RedisConfig 中为所有缓存设置随机 TTL：
+
+```java
+// RedisConfig.java — 600~780秒随机，防止缓存雪崩
+RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+    .entryTtl(Duration.ofSeconds(600 + new Random().nextInt(180)));
+```
+
+**2. 缓存击穿防护 — 逻辑过期 + Redisson 互斥锁**
+
+热点 key 过期瞬间，大量请求同时穿透到 DB。CacheBreakdownUtil 使用「逻辑过期 + 互斥锁」模式：
+
+```java
+// CacheBreakdownUtil.getWithLogicalExpire()
+// 1. 从 Redis 读取 {data: ..., expireTime: ...}
+// 2. 未逻辑过期 → 直接返回
+// 3. 逻辑已过期 → tryLock() 获取互斥锁
+//    成功 → 查 DB 重建缓存 → 释放锁
+//    失败 → 返回旧数据（防止击穿到 DB）
+return cacheBreakdownUtil.getWithLogicalExpire(
+    "hospital:" + hoscode, 600,
+    () -> hospitalMapper.selectByHoscode(hoscode),
+    HospitalVo.class
+);
+```
+
+**3. 缓存穿透防护 — 空值缓存**
+
+对于查询不存在的数据，也缓存 null 标记，短 TTL（60s），防止恶意请求穿透到数据库。
+
+**参考文件**：
+- [RedisConfig.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/common/service_util/src/main/java/com/yygh/common/config/RedisConfig.java)
+- [CacheBreakdownUtil.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/common/service_util/src/main/java/com/yygh/common/cache/CacheBreakdownUtil.java)
+- [HospitalServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_hosp/src/main/java/com/yygh/hosp/service/impl/HospitalServiceImpl.java)
 
 ---
 
-### 2.3 如何防止缓存穿透？
+### 2.3 项目中缓存更新策略是什么？
 
 **答案**：
-缓存穿透是指查询一个不存在的数据，导致每次请求都直接访问数据库。
+项目使用 **Cache-Aside（旁路缓存）** 模式：
 
-**解决方案**：
-1. **布隆过滤器**：在缓存层前添加布隆过滤器
-2. **空值缓存**：对于不存在的数据，也缓存一个空值
-3. **参数校验**：在业务层对参数进行校验
+**读操作**：
+```java
+// @Cacheable 自动：先查 Redis → 命中返回 → 未命中查 DB 并写入缓存
+@Cacheable(value = "hospital", key = "#hoscode")
+public HospitalVo getByHoscode(String hoscode) { ... }
+```
+
+**写操作**：
+```java
+// @CacheEvict 自动：先更新 DB → 删除缓存（而非更新缓存，避免并发写覆盖）
+@CacheEvict(value = "hospital", key = "#hospitalSaveDTO.hoscode")
+public void save(HospitalSaveDTO hospitalSaveDTO) { ... }
+```
+
+**为什么写时删缓存而不是更新缓存？** 高并发下多个写请求可能以不同顺序更新缓存，导致缓存脏数据。删除缓存让下次读请求从 DB 加载最新值，保证一致性。
 
 ---
 
-### 2.4 如何防止缓存击穿？
-
-**答案**：
-缓存击穿是指某个热点 key 过期后，大量请求同时访问该 key。
-
-**解决方案**：
-1. **热点数据永不过期**
-2. **分布式锁**：当缓存过期时，只有一个请求去更新缓存
-3. **缓存预热**：提前加载热点数据到缓存
-
----
-
-### 2.5 如何防止缓存雪崩？
-
-**答案**：
-缓存雪崩是指大量缓存同时过期，导致大量请求直接访问数据库。
-
-**解决方案**：
-1. **分散过期时间**：为不同的 key 设置不同的过期时间
-2. **多级缓存**：使用本地缓存 + Redis 缓存
-3. **缓存降级**：当缓存服务不可用时，使用降级策略
-
----
-
-### 2.6 Redisson 分布式锁的实现原理？
+### 2.4 Redisson 分布式锁的实现原理？
 
 **答案**：
 Redisson 分布式锁基于 Redis 的 Redlock 算法实现：
@@ -299,15 +424,43 @@ MyBatis-Plus 是 MyBatis 的增强工具，提供了许多便捷功能：
 
 ---
 
-### 4.2 什么是最终一致性？
+### 4.2 什么是最终一致性？项目如何实现支付订单最终一致？
 
 **答案**：
 最终一致性是指在分布式系统中，数据在经过一段时间后会达到一致状态，而不是实时一致。
 
-**实现方式**：
-- 使用消息队列异步处理
-- 设置合理的超时时间和重试机制
-- 实现幂等性保证
+**项目中的支付一致性方案（幂等 + MQ + 对账）**：
+
+**1. 接口幂等校验**：
+微信支付可能重复回调，`paySuccessV3()` 先 `selectCount` 检查 `outTradeNo` 是否已处理，防止重复更新。
+
+**2. RabbitMQ 异步消息队列**：
+订单状态变更后，通过 RabbitMQ 异步通知 hospital-manage 端：
+```java
+// HospitalServiceImpl — 发送订单状态消息到 MQ
+rabbitTemplate.convertAndSend(ORDER_EXCHANGE, ORDER_ROUTING_KEY, statusMsg);
+
+// OrderStatusReceiver — 消费消息更新本地订单状态
+@RabbitListener(queues = MqConfig.ORDER_QUEUE)
+public void handleMessage(Message message, Channel channel) {
+    // 手动确认机制，防止消息丢失
+    channel.basicAck(deliveryTag, false);
+}
+```
+
+**3. 定时对账补偿**：
+`PaymentReconciliationTask` 每隔 10 分钟取消超 30 分钟未支付订单 + 每日凌晨 2 点与微信对账，发现差异自动修复：
+```java
+@Scheduled(cron = "0 0/10 * * * ?") // 每10分钟
+public void cancelExpiredOrders() { ... }
+
+@Scheduled(cron = "0 0 2 * * ?") // 凌晨2点
+public void dailyReconciliation() { ... }
+```
+
+**参考文件**：
+- [PaymentServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/yygh/order/service/impl/PaymentServiceImpl.java)
+- [PaymentReconciliationTask.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/yygh/order/task/PaymentReconciliationTask.java)
 
 ---
 
@@ -525,60 +678,71 @@ String paySign = MD5.encryptSign(jsonObject.get("sign").toString());
 ### 7.2 如何处理微信支付回调？
 
 **答案**：
-支付回调处理流程：
+支付回调使用微信支付 APIv3 + wechatpay-java SDK 自动验签解密。
 
-1. **接收通知**：微信服务器 POST 方式发送支付结果通知
-2. **验证签名**：验证回调数据的签名是否正确
-3. **解析数据**：解析 XML 格式的支付结果
-4. **业务处理**：根据支付结果更新订单状态
-5. **返回应答**：返回 SUCCESS 或 FAIL
+1. **接收通知**：微信 POST 加密的支付结果通知（APIv3 格式）
+2. **SDK 自动验签解密**：`WechatPayValidator` 验证微信签名 + `AesUtil` 解密回调报文
+3. **幂等处理**：`paySuccessV3()` 先 `selectCount` 检查是否已处理，防止重复回调
+4. **更新状态**：支付记录表 insert + 订单状态 UNPAID→PAID + 同步 hospital-manage
+5. **返回应答**：返回 JSON `{"code":"SUCCESS"}` / `{"code":"FAIL"}`
 
 **核心代码**：
 ```java
 @PostMapping("/callback/notify")
-public String callbackNotify(HttpServletRequest request) {
-    // 1. 接收微信返回的数据
-    String xmlContent = readData(request);
-    
-    // 2. 验证签名
-    if(!TencentV3Util.verifySignature(xmlContent, signature)) {
-        return fail("签名验证失败");
+public String payNotify(@RequestBody String body, 
+                         @RequestHeader("Wechatpay-Serial") String serial,
+                         @RequestHeader("Wechatpay-Signature") String signature,
+                         @RequestHeader("Wechatpay-Timestamp") String timestamp,
+                         @RequestHeader("Wechatpay-Nonce") String nonce) {
+    // 1. SDK 自动验签
+    WechatPayValidator validator = new WechatPayValidator(verifier);
+    // 2. 解密回调内容
+    String plaintext = AesUtil.decryptToString(body.getBytes(), apiV3Key);
+    // 3. 解析 + 幂等处理
+    JSONObject result = JSONObject.parseObject(plaintext);
+    if ("TRANSACTION.SUCCESS".equals(result.getString("event_type"))) {
+        paymentService.paySuccessV3(outTradeNo, transactionId);
     }
-    
-    // 3. 解析支付结果
-    Map<String, Object> result = WXPayUtil.xmlToMap(xmlContent);
-    
-    // 4. 处理订单
-    if("SUCCESS".equals(result.get("result_code"))) {
-        orderService.updatePayStatus(orderNo, transactionId);
-    }
-    
-    // 5. 返回成功
-    return "<xml><return_code><![CDATA[SUCCESS]]></return_code></xml>";
+    return "{\"code\":\"SUCCESS\"}";
 }
 ```
+
+**参考文件**：[WechatCallbackController.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/yygh/order/controller/WechatCallbackController.java)
 
 ---
 
 ### 7.3 如何保证支付幂等性？
 
 **答案**：
-支付幂等性是防止重复支付的关键：
+支付幂等性是防止重复支付的关键。
 
-1. **唯一订单号**：每次支付使用全局唯一订单号
-2. **数据库唯一约束**：订单号字段添加唯一索引
-3. **状态机校验**：只有未支付的订单才能发起支付
-4. **幂等标记**：使用 Redis 记录支付流水号
+**本项目实现（数据库幂等）**：
 
-**实现方式**：
 ```java
-// 使用 Redis 实现支付幂等
-String key = "pay:idempotent:" + orderNo;
-if(redisTemplate.hasKey(key)) {
-    throw new YyghException(ResultCodeEnum.PAYMENT重复);
+// PaymentServiceImpl.paySuccessV3()
+public void paySuccessV3(String outTradeNo, String transactionId) {
+    // 幂等：已支付则跳过（selectCount 检查）
+    if (paymentInfoMapper.selectCount(
+            new LambdaQueryWrapper<PaymentInfo>()
+                .eq(PaymentInfo::getOutTradeNo, outTradeNo)) > 0) {
+        log.info("支付已处理，跳过，订单号：{}", outTradeNo);
+        return;
+    }
+    // 插入支付记录
+    paymentInfoMapper.insert(paymentInfo);
+    // 更新订单状态 UNPAID → PAID
+    orderService.updateStatus(orderId, OrderStatusEnum.PAID);
+    // 同步 hospital-manage
+    HttpRequestHelper.sendRequest(reqMap, apiUrl + "/order/updatePayStatus");
 }
-redisTemplate.opsForValue().set(key, "1", 24, TimeUnit.HOURS);
 ```
+
+**三重保障**：
+1. **数据库 selectCount 前置检查**：已支付订单直接跳过
+2. **唯一订单号 outTradeNo**：全局唯一
+3. **定时对账补偿**：`PaymentReconciliationTask` 每日凌晨2点与微信对账，修复不一致状态
+
+**参考文件**：[PaymentServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/yygh/order/service/impl/PaymentServiceImpl.java)
 
 ---
 
@@ -1011,39 +1175,35 @@ IPage<Schedule> page = scheduleService.selectPage(pageNum, pageSize,
 ### 10.5 订单状态通知功能如何实现？
 
 **答案**：
-订单状态通知通过 RabbitMQ 消息队列异步处理订单状态变更事件：
+订单状态通知通过 RabbitMQ 异步处理，hospital-manage 端发送消息 → service_order 端消费：
 
-1. **通知时机**：
-   - 预约成功后立即发送订单状态通知
-   - 就诊前1天发送就诊提醒
-   - 就诊前2小时发送提醒
-   - 订单取消时发送取消通知
+1. **发送端（hospital-manage）**：订单状态变更时，通过 `RabbitTemplate` 发送 JSON 消息到 `ORDER_EXCHANGE`
+2. **消费端（service_order）**：`OrderStatusReceiver` 通过 `@RabbitListener` 监听 `ORDER_QUEUE`，手动 ACK 确认
+3. **manua l-ack 机制**：消费者处理成功后 `channel.basicAck()`，失败 `channel.basicNack()`，防止消息丢失
 
-2. **通知内容**：
-   - 预约成功：科室、医生、时间、地点
-   - 就诊提醒：就诊时间、注意事项
-   - 取消通知：取消原因、退款信息
-
-3. **实现方式**：
-   - 订单服务在订单状态变更时，通过 RabbitMQ 发送消息到 ORDER_QUEUE
-   - 消费者 OrderStatusReceiver 处理消息，更新订单状态推送记录
-   - 使用 RabbitMQ 延迟队列实现定时提醒（就诊前提醒）
-
-**消息发送**：
+**核心代码**：
 ```java
-// 预约成功后发送订单状态通知
-public void createOrder(Order order) {
-    // 创建订单逻辑...
-    
-    // 发送订单状态变更消息
-    rabbitTemplate.convertAndSend("order.exchange", "order.routing.key", order);
-    
-    // 发送就诊前提醒（延迟消息）
-    rabbitTemplate.convertAndSend("order.delay.exchange", "order.delay.routing.key", order);
+// HospitalServiceImpl — 发送消息
+rabbitTemplate.convertAndSend(
+    HospitalRabbitConfig.ORDER_EXCHANGE,
+    HospitalRabbitConfig.ORDER_ROUTING_KEY, statusMsg);
+
+// OrderStatusReceiver — 消费消息
+@RabbitListener(queues = MqConfig.ORDER_QUEUE)
+public void handleMessage(String messageBody, Message message, Channel channel) {
+    try {
+        JSONObject msg = JSONObject.parseObject(messageBody);
+        orderService.updateOrderStatus(
+            msg.getLong("hosRecordId"), msg.getInteger("orderStatus"));
+        channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+    } catch (Exception e) {
+        channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
+    }
 }
 ```
 
 **参考文件**：
+- [HospitalServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/hospital-manage/src/main/java/com/yygh/hospital/service/impl/HospitalServiceImpl.java)
 - [OrderStatusReceiver.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/yygh/order/receiver/OrderStatusReceiver.java)
 
 ---
@@ -1085,37 +1245,45 @@ public void preloadScheduleToRedis() {
 ### 10.7 如何处理医院、科室、医生数据的导入？
 
 **答案**：
-使用 EasyExcel 实现数据批量导入：
+使用 EasyExcel 流式读取 + MyBatis-Plus 批量插入实现高效数据导入：
 
-1. **定义监听器**：
-```java
-@RequiresPermissions("admin:hosp:import")
-@PostMapping("/importHosp")
-public Result importHosp(MultipartFile file) throws Exception {
-    EasyExcel.read(file.getInputStream(), HospitalExcelVo.class, 
-        new ExcelListener()).sheet().doRead();
-    return Result.ok();
-}
-```
+1. **流式读取**：`AnalysisEventListener` 逐行解析 Excel，不一次性加载全量，防止 OOM
+2. **攒批插入**：invoke() 累积行到 `List<Dict>`，`doAfterAllAnalysed()` 后调用 `saveBatch()` 批量写入
+3. **缓存失效**：`@CacheEvict(value = "dict", allEntries = true)` 导入后清空旧缓存
 
-2. **数据处理**：
+**核心代码**：
 ```java
-public class ExcelListener extends AnalysisEventListener<HospitalExcelVo> {
+// DictListener.java — 批量累积
+public class DictListener extends AnalysisEventListener<DictEeVo> {
+    private final List<Dict> dictList = new ArrayList<>();
+
     @Override
-    public void invoke(HospitalExcelVo data, AnalysisContext context) {
-        // 校验数据
-        if(StringUtils.isEmpty(data.getHosname())) {
-            throw new YyghException("医院名称不能为空");
-        }
-        // 保存数据
-        hospitalService.saveHospital(data);
+    public void invoke(DictEeVo dictEeVo, AnalysisContext context) {
+        Dict dict = new Dict();
+        BeanUtils.copyProperties(dictEeVo, dict);
+        dictList.add(dict); // 攒批，不逐行 insert
     }
+
+    @Override
+    public void doAfterAllAnalysed(AnalysisContext context) {
+        // 数据由调用方批量写入
+    }
+
+    public List<Dict> getDictList() { return dictList; }
+}
+
+// DictServiceImpl.java — 批量写入
+@CacheEvict(value = "dict", allEntries = true)
+public void importDictData(MultipartFile file) {
+    DictListener listener = new DictListener();
+    EasyExcel.read(file.getInputStream(), DictEeVo.class, listener).sheet().doRead();
+    this.saveBatch(listener.getDictList()); // MyBatis-Plus 批量插入
 }
 ```
 
-3. **错误处理**：
-   - 跳过错误行，记录错误日志
-   - 导入完成后返回错误报告
+**参考文件**：
+- [DictListener.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_cmn/src/main/java/com/yygh/cmn/listener/DictListener.java)
+- [DictServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_cmn/src/main/java/com/yygh/cmn/service/impl/DictServiceImpl.java)
 
 ---
 
@@ -1124,7 +1292,7 @@ public class ExcelListener extends AnalysisEventListener<HospitalExcelVo> {
 ### 11.1 这个项目最大的难点是什么？你是如何解决的？
 
 **答案**：
-**最大难点：高并发号源扣减**
+**最大难点：高并发号源扣减（三层防护）**
 
 **问题描述**：
 医院放号瞬间，大量用户同时抢号，导致：
@@ -1132,27 +1300,38 @@ public class ExcelListener extends AnalysisEventListener<HospitalExcelVo> {
 2. 系统响应慢（数据库压力过大）
 3. 数据不一致（缓存与数据库不同步）
 
-**解决方案**：
-1. **Redis 预扣库存**：
-   - 号源预加载到 Redis
-   - 使用 compareAndSet 原子扣减
-   - 响应时间从 100ms 降到 5ms
+**解决方案（三层防护）**：
 
-2. **分布式锁**：
-   - 使用 Redisson 锁保证同一订单串行处理
-   - 避免重复提交
+**第一层 — Redisson 分布式锁**：
+按排班编号（`hosScheduleId`）加锁，同一排班的并发请求串行化，不同排班互不阻塞：
+```java
+RLock lock = redissonClient.getLock("lock:schedule:" + hosScheduleId);
+lock.lock();
+try { /* 扣减 + 下单 */ } finally { lock.unlock(); }
+```
 
-3. **异步入库**：
-   - Redis 扣减成功后，立即返回
-   - 异步更新数据库，保证最终一致性
+**第二层 — RAtomicLong 原子扣减**：
+Redis CAS 无锁原子操作，`addAndGet(-1)` 扣减。结果 < 0 则 `addAndGet(1)` 回退：
+```java
+RAtomicLong atomicLong = redissonClient.getAtomicLong(redisKey);
+if (!atomicLong.isExists()) atomicLong.set(availableNumber);
+if (atomicLong.addAndGet(-1) < 0) {
+    atomicLong.addAndGet(1);
+    throw new YyghException(ResultCodeEnum.NUMBER_NO);
+}
+```
 
-4. **乐观锁**：
-   - 数据库层使用 version 字段
-   - 最后兜底，防止数据错误
+**第三层 — MyBatis-Plus 乐观锁兜底**：
+数据库 `@Version` 字段防止并发更新覆盖，最后一道防线：
+```java
+// MybatisPlusConfig 配置乐观锁拦截器
+interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
+```
 
-**效果**：
-- 支持每秒 1000+ 并发预约
-- 成功率从 60% 提升到 99.5%
+**附加保障 — 失败回滚**：
+医院接口调用失败、Feign 调用失败时均回退 Redis 号源，保证库存不丢失。
+
+**参考文件**：[OrderServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/yygh/order/service/impl/OrderServiceImpl.java)
 
 **参考文件**：[OrderServiceImpl.java](file:///d:/javaproject/yygh-master/yygh-master/后台代码/yygh_parent/service/service_order/src/main/java/com/yygh/order/service/impl/OrderServiceImpl.java)
 
