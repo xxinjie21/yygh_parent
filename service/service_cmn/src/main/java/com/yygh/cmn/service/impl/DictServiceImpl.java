@@ -17,6 +17,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
@@ -24,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 /**
  * 数据字典服务实现类
@@ -66,14 +68,22 @@ public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements Di
         return os.toByteArray();
     }
 
-    //导入数据字典
+    //导入数据字典（批量插入模式）
     @CacheEvict(value = "dict", allEntries = true)
     @Override
     public void importDictData(MultipartFile file) {
         try {
-            EasyExcel.read(file.getInputStream(), DictEeVo.class, new DictListener(baseMapper)).sheet().doRead();
+            DictListener listener = new DictListener();
+            EasyExcel.read(file.getInputStream(), DictEeVo.class, listener).sheet().doRead();
+            // 获取累积数据，使用 MyBatis-Plus saveBatch 批量插入
+            List<Dict> dictList = listener.getDictList();
+            if (!dictList.isEmpty()) {
+                this.saveBatch(dictList);
+                log.info("数据字典批量导入成功，共导入：{} 条", dictList.size());
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("数据字典导入失败", e);
+            throw new RuntimeException("数据字典导入失败：" + e.getMessage());
         }
     }
 
