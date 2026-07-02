@@ -4,7 +4,7 @@
 
 ## 一分钟项目介绍（面试开场白）
 
-尚医通是一个**分布式医疗预约挂号平台**，基于 Spring Cloud 微服务架构，拆分为用户、号源、订单、支付、排班五大微服务，实现从科室查询、线上预约、微信支付到订单对账的全流程数字化。
+**分布式医疗预约挂号平台**，基于 Spring Cloud 微服务架构，拆分为用户、号源、订单、支付、排班五大微服务，实现从科室查询、线上预约、微信支付到订单对账的全流程数字化。
 
 **技术栈**：Java 17 + Spring Boot 3.2 + Spring Cloud Gateway + Nacos + Sentinel + OpenFeign + MyBatis-Plus + MySQL + Redis + Redisson + RabbitMQ + EasyExcel + JWT
 
