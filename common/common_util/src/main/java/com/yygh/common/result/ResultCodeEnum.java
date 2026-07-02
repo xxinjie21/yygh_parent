@@ -20,7 +20,6 @@ public enum ResultCodeEnum {
     PERMISSION(209, "没有权限"),
 
     CODE_ERROR(210, "验证码错误"),
-//    LOGIN_MOBLE_ERROR(211, "账号不正确"),
     LOGIN_DISABLED_ERROR(212, "改用户已被禁用"),
     REGISTER_MOBLE_ERROR(213, "手机号已被使用"),
     LOGIN_AURH(214, "需要登录"),
@@ -30,7 +29,6 @@ public enum ResultCodeEnum {
     ILLEGAL_CALLBACK_REQUEST_ERROR( 217, "非法回调请求"),
     FETCH_ACCESSTOKEN_FAILD( 218, "获取accessToken失败"),
     FETCH_USERINFO_ERROR( 219, "获取用户信息失败"),
-    //LOGIN_ERROR( 23005, "登录失败"),
 
     PAY_RUN(220, "支付中"),
     CANCEL_ORDER_FAIL(225, "取消订单失败"),

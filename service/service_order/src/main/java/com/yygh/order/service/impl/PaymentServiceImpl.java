@@ -13,7 +13,7 @@ import com.yygh.order.service.OrderService;
 import com.yygh.order.service.PaymentService;
 import com.yygh.vo.order.SignInfoVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.joda.time.DateTime;
 import lombok.RequiredArgsConstructor;
@@ -84,7 +84,6 @@ public class PaymentServiceImpl extends ServiceImpl<PaymentInfoMapper, PaymentIn
         reqMap.put("hoscode",orderInfo.getHoscode());
         reqMap.put("hosRecordId",orderInfo.getHosRecordId());
         reqMap.put("timestamp", HttpRequestHelper.getTimestamp());
-//        String sign = HttpRequestHelper.getSign(reqMap, signInfoVo.getSignKey());
         String sign = signInfoVo.getSignKey();
         reqMap.put("sign", sign);
         JSONObject result = HttpRequestHelper.sendRequest(reqMap, signInfoVo.getApiUrl() + "/order/updatePayStatus");

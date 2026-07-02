@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
  * @author XXJ
  */
 @Configuration
-public class Swagger2Config {
+public class SpringdocConfig {
 
     @Bean
     public GroupedOpenApi webApiGroup() {
