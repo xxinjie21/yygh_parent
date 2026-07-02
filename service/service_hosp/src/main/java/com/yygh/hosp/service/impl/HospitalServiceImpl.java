@@ -2,6 +2,7 @@ package com.yygh.hosp.service.impl;
 
 import com.alibaba.fastjson.JSONObject;
 import com.yygh.cmn.client.DictFeignClient;
+import com.yygh.common.cache.CacheBreakdownUtil;
 import com.yygh.common.utils.BeanCopyUtils;
 import com.yygh.dto.HospitalQueryDTO;
 import com.yygh.dto.HospitalSaveDTO;
@@ -16,7 +17,6 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -37,6 +37,8 @@ public class HospitalServiceImpl extends
     private final HospitalMapper hospitalMapper;
 
     private final DictFeignClient dictFeignClient;
+
+    private final CacheBreakdownUtil cacheBreakdownUtil;
 
     // 上传医院信息
     @Override
@@ -70,12 +72,18 @@ public class HospitalServiceImpl extends
         }
     }
 
-    // 根据医院编号查询医院（使用Redis缓存）
+    // 根据医院编号查询医院（逻辑过期 + 互斥锁防缓存击穿）
     @Override
-    @Cacheable(value = "hospital", key = "#hoscode")
     public HospitalVo getByHoscode(String hoscode) {
-        Hospital hospital = hospitalMapper.selectByHoscode(hoscode);
-        return toHospitalVo(hospital);
+        return cacheBreakdownUtil.getWithLogicalExpire(
+                "hospital:" + hoscode,
+                600,
+                () -> {
+                    Hospital hospital = hospitalMapper.selectByHoscode(hoscode);
+                    return toHospitalVo(hospital);
+                },
+                HospitalVo.class
+        );
     }
 
     // 医院列表（条件查询 + 分页）
