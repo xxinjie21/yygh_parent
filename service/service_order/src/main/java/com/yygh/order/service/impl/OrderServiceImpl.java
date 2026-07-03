@@ -62,6 +62,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
 
         // 获取排班相关信息
         ScheduleOrderVo scheduleOrderVo = hospitalFeignClient.getScheduleOrderVo(scheduleId);
+        if (scheduleOrderVo == null) {
+            throw new YyghException(ResultCodeEnum.PARAM_ERROR);
+        }
 
         // 判断当前时间是否还可以预约
         if (new DateTime(scheduleOrderVo.getStartTime()).isAfterNow()
@@ -131,7 +134,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
             paramMap.put("contactsCertificatesNo", patient.getContactsCertificatesNo());
             paramMap.put("contactsPhone", patient.getContactsPhone());
             paramMap.put("timestamp", HttpRequestHelper.getTimestamp());
-            String sign = signInfoVo.getSignKey();
+            String sign = HttpRequestHelper.getSign(paramMap, signInfoVo.getSignKey());
             paramMap.put("sign", sign);
 
             // 请求医院系统接口
@@ -233,7 +236,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
         reqMap.put("hoscode", orderInfo.getHoscode());
         reqMap.put("hosRecordId", orderInfo.getHosRecordId());
         reqMap.put("timestamp", HttpRequestHelper.getTimestamp());
-        String sign = signInfoVo.getSignKey();
+        String sign = HttpRequestHelper.getSign(reqMap, signInfoVo.getSignKey());
         reqMap.put("sign", sign);
 
         JSONObject result = HttpRequestHelper.sendRequest(reqMap,
