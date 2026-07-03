@@ -35,7 +35,7 @@ public class HttpRequestHelper {
         }
         str.append(signKey);
         log.info("加密前：" + str.toString());
-        String md5Str = MD5.encrypt(signKey);
+        String md5Str = MD5.encrypt(str.toString());
         log.info("加密后：" + md5Str);
         return md5Str;
     }
@@ -48,7 +48,7 @@ public class HttpRequestHelper {
      */
     public static boolean isSignEquals(Map<String, Object> paramMap, String signKey) {
         String sign = (String)paramMap.get("sign");
-        String md5Str = MD5.encrypt(signKey);
+        String md5Str = getSign(paramMap, signKey);
         if(!sign.equals(md5Str)) {
             return false;
         }
