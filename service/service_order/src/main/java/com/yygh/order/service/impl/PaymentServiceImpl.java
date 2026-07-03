@@ -84,7 +84,7 @@ public class PaymentServiceImpl extends ServiceImpl<PaymentInfoMapper, PaymentIn
         reqMap.put("hoscode",orderInfo.getHoscode());
         reqMap.put("hosRecordId",orderInfo.getHosRecordId());
         reqMap.put("timestamp", HttpRequestHelper.getTimestamp());
-        String sign = signInfoVo.getSignKey();
+        String sign = HttpRequestHelper.getSign(reqMap, signInfoVo.getSignKey());
         reqMap.put("sign", sign);
         JSONObject result = HttpRequestHelper.sendRequest(reqMap, signInfoVo.getApiUrl() + "/order/updatePayStatus");
     }
@@ -120,7 +120,7 @@ public class PaymentServiceImpl extends ServiceImpl<PaymentInfoMapper, PaymentIn
         reqMap.put("hoscode", orderInfo.getHoscode());
         reqMap.put("hosRecordId", orderInfo.getHosRecordId());
         reqMap.put("timestamp", HttpRequestHelper.getTimestamp());
-        String sign = signInfoVo.getSignKey();
+        String sign = HttpRequestHelper.getSign(reqMap, signInfoVo.getSignKey());
         reqMap.put("sign", sign);
         JSONObject result = HttpRequestHelper.sendRequest(reqMap, signInfoVo.getApiUrl() + "/order/updatePayStatus");
     }
