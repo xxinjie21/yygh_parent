@@ -115,6 +115,9 @@ public class ApiController {
         //签名校验
         String json = JSONObject.toJSONString(dto);
         Map<String, Object> paramMap = JSONObject.parseObject(json, Map.class);
+        if(!HttpRequestHelper.isSignEquals(paramMap, hospitalSetService.getSignKey(hoscode))) {
+            throw new YyghException(ResultCodeEnum.SIGN_ERROR);
+        }
         departmentService.remove(hoscode, depcode);
         return Result.ok();
     }
