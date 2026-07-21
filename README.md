@@ -52,7 +52,7 @@ Redis 原子扣减（DECR） → Redisson 分布式锁 → 数据库乐观锁（
 
 - **第一层**：Redis `decr` 原子操作预扣减号源，拦截绝大部分并发请求
 - **第二层**：Redisson 分布式锁防止同一用户重复提交
-- **第三层**��数据库 `UPDATE schedule SET available_number = available_number - 1 WHERE available_number > 0` 兜底
+- **第三层：数据库** `UPDATE schedule SET available_number = available_number - 1 WHERE available_number > 0` 兜底
 
 ### 2. 微信支付 APIv3 全流程
 
