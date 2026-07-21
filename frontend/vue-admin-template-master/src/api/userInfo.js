@@ -3,9 +3,9 @@ const api_name = '/admin/user'
 export default {
   getPageList(page, limit, searchObj) {
     return request({
-      url: `${api_name}/${page}/${limit}`,
-      method: 'get',
-      params: searchObj
+      url: `${api_name}/list`,
+      method: 'post',
+      data: { page, size: limit, ...searchObj }
     })
   },
   //用户锁定

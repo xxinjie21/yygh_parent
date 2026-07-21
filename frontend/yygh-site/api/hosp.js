@@ -5,9 +5,9 @@ export default {
   //获取医院列表
   getPageList(page, limit, searchObj) {
     return request({
-      url: `${api_name}/findHospList/${page}/${limit}`,
-      method: 'get',
-      params: searchObj
+      url: `${api_name}/findHospList`,
+      method: 'post',
+      data: { page, size: limit, ...searchObj }
     })
   },
   //根据医院名称模糊查询
@@ -34,8 +34,9 @@ export default {
   //获取可预约排班数据
   getBookingScheduleRule(page, limit, hoscode, depcode) {
     return request({
-      url: `${api_name}/auth/getBookingScheduleRule/${page}/${limit}/${hoscode}/${depcode}`,
-      method: 'get'
+      url: `${api_name}/auth/getBookingScheduleRule`,
+      method: 'post',
+      data: { page, size: limit, hoscode, depcode }
     })
   },
   //根据医院编号,科室编号和工作日期查询排班详细信息

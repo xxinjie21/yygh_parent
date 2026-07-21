@@ -10,9 +10,12 @@ import com.yygh.vo.user.UserInfoVo;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 用户信息API控制器
@@ -26,6 +29,17 @@ import java.util.Map;
 public class UserInfoApiController {
 
     private final UserInfoService userInfoService;
+    private final RedisTemplate<String, String> redisTemplate;
+
+    //发送手机验证码
+    @Operation(summary = "发送验证码")
+    @GetMapping("sendCode/{phone}")
+    public Result sendCode(@PathVariable String phone) {
+        String code = String.valueOf(new Random().nextInt(900000) + 100000);
+        redisTemplate.opsForValue().set(phone, code, 5, TimeUnit.MINUTES);
+        log.info("验证码已发送：phone={}, code={}", phone, code);
+        return Result.ok();
+    }
 
     //用户手机号登录接口
     @PostMapping("login")

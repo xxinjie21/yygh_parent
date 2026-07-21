@@ -242,47 +242,43 @@ Redis 原子扣减（DECR） → Redisson 分布式锁 → 数据库乐观锁（
 
 ```
 yygh-master/
-├── 后台代码/                              # 后端全部代码
-│   └── yygh_parent/                       # Maven 父工程
-│       ├── pom.xml                         # 根 POM（统一版本管理）
-│       ├── common/                         # 公共模块
-│       │   ├── common_util/                # 公共工具（Result/异常/JWT/MD5）
-│       │   └── service_util/               # 服务工具（配置/签名/RabbitMQ/Redis）
-│       ├── model/                          # 数据模型
-│       │   ├── base/                       #   BaseEntity
-│       │   ├── hosp/                       #   Hospital/HospitalSet/Department/Schedule
-│       │   ├── user/                       #   UserInfo/Patient/UserLoginRecord
-│       │   ├── order/                      #   OrderInfo/PaymentInfo/RefundInfo
-│       │   ├── cmn/                        #   Dict
-│       │   ├── vo/                         #   22 个 Value Object
-│       │   ├── dto/                        #   15 个 Data Transfer Object
-│       │   └── enums/                      #   6 个枚举类
-│       ├── service_client/                 # Feign 远程调用客户端
-│       │   ├── service_cmn_client          #   DictFeignClient
-│       │   ├── service_hosp_client         #   HospitalFeignClient
-│       │   ├── service_user_client         #   PatientFeignClient
-│       │   └── service_order_client        #   OrderFeignClient
-│       ├── server_gateway/                 # API 网关 (:8888)
-│       │   └── filter/AuthGlobalFilter     #   JWT 鉴权全局过滤器
-│       ├── service/                        # 业务微服务
-│       │   ├── service_hosp/               # 医院服务 (:8201)
-│       │   ├── service_user/               # 用户服务 (:8160)
-│       │   ├── service_order/              # 订单服务 (:8206)
-│       │   ├── service_cmn/                # 数据字典服务 (:8202)
-│       │   ├── service_oss/                # 文件服务 (:8205)
-│       │   └── service_statistics/         # 统计服务 (:8208)
-│       └── hospital-manage/                # 医院后台 (:9998，独立服务)
-│
-├── 前台代码/                              # 前端全部代码
-│   ├── yygh-site/                          # Nuxt.js 用户前台（SSR）
-│   └── vue-admin-template-master/          # Vue 管理后台（SPA）
-│
-└── 数据库/                                # SQL 初始化脚本
-    ├── yygh_cmn.sql                        #   数据字典
-    ├── yygh_hosp.sql                       #   医院设置
-    ├── yygh_manage.sql                     #   医院管理端
-    ├── yygh_order.sql                      #   订单/支付/退款
-    └── yygh_user.sql                       #   用户/就诊人/登录记录
+├── .gitignore
+├── README.md
+├── images/                                # 项目截图
+├── backend/                               # 后端全部代码
+│   ├── pom.xml                            # 根 POM（统一版本管理）
+│   ├── common/                            # 公共模块
+│   │   ├── common_util/                   # 公共工具（Result/异常/JWT/MD5）
+│   │   └── service_util/                  # 服务工具（配置/签名/RabbitMQ/Redis）
+│   ├── model/                             # 数据模型
+│   │   ├── base/                          #   BaseEntity
+│   │   ├── hosp/                          #   Hospital/HospitalSet/Department/Schedule
+│   │   ├── user/                          #   UserInfo/Patient/UserLoginRecord
+│   │   ├── order/                         #   OrderInfo/PaymentInfo/RefundInfo
+│   │   ├── cmn/                           #   Dict
+│   │   ├── vo/                            #   22 个 Value Object
+│   │   ├── dto/                           #   15 个 Data Transfer Object
+│   │   └── enums/                         #   6 个枚举类
+│   ├── service_client/                    # Feign 远程调用客户端
+│   ├── server_gateway/                    # API 网关 (:8888)
+│   │   └── filter/AuthGlobalFilter        #   JWT 鉴权全局过滤器
+│   ├── service/                           # 业务微服务
+│   │   ├── service_hosp/                  # 医院服务 (:8201)
+│   │   ├── service_user/                  # 用户服务 (:8160)
+│   │   ├── service_order/                 # 订单服务 (:8206)
+│   │   ├── service_cmn/                   # 数据字典服务 (:8202)
+│   │   ├── service_oss/                   # 文件服务 (:8205)
+│   │   └── service_statistics/            # 统计服务 (:8208)
+│   ├── hospital-manage/                   # 医院后台 (:9998，独立服务)
+│   └── sql/                               # SQL 初始化脚本
+│       ├── yygh_cmn.sql
+│       ├── yygh_hosp.sql
+│       ├── yygh_manage.sql
+│       ├── yygh_order.sql
+│       └── yygh_user.sql
+└── frontend/                              # 前端全部代码
+    ├── yygh-site/                         # Nuxt.js 用户前台（SSR）
+    └── vue-admin-template-master/         # Vue 管理后台（SPA）
 ```
 
 ---
@@ -303,18 +299,18 @@ yygh-master/
 ### 2. 克隆项目
 
 ```bash
-git clone https://github.com/xxinjie21/yygh-master.git
-cd yygh-master
+git clone https://github.com/xxinjie21/yygh_parent.git
+cd yygh_parent
 ```
 
 ### 3. 初始化数据库
 
 ```bash
-mysql -u root -p < 数据库/yygh_cmn.sql
-mysql -u root -p < 数据库/yygh_hosp.sql
-mysql -u root -p < 数据库/yygh_manage.sql
-mysql -u root -p < 数据库/yygh_order.sql
-mysql -u root -p < 数据库/yygh_user.sql
+mysql -u root -p < backend/sql/yygh_cmn.sql
+mysql -u root -p < backend/sql/yygh_hosp.sql
+mysql -u root -p < backend/sql/yygh_manage.sql
+mysql -u root -p < backend/sql/yygh_order.sql
+mysql -u root -p < backend/sql/yygh_user.sql
 ```
 
 ### 4. 配置环境变量
@@ -351,7 +347,7 @@ export JWT_SIGN_KEY=your_jwt_secret
 按顺序启动：
 
 ```
-1. mvn clean compile -DskipTests          # 编译整个项目
+1. cd backend && mvn clean compile -DskipTests
 2. 启动 Nacos 注册中心
 3. 启动基础服务（顺序：cmn → hosp → user → order → oss → statistics）
    - service_cmn        :8202
@@ -363,8 +359,8 @@ export JWT_SIGN_KEY=your_jwt_secret
 4. 启动网关 server_gateway     :8888
 5. 启动医院后台 hospital-manage :9998（独立服务）
 6. 启动前端
-   - cd 前台代码/yygh-site && npm install && npm run dev
-   - cd 前台代码/vue-admin-template-master && npm install && npm run dev
+   - cd frontend/yygh-site && npm install && npm run dev
+   - cd frontend/vue-admin-template-master && npm install && npm run dev
 ```
 
 ---
@@ -395,26 +391,33 @@ export JWT_SIGN_KEY=your_jwt_secret
 
 | 路径 | 方法 | 说明 | 鉴权 |
 |------|------|------|------|
-| `/api/user/auth/sendCode/{phone}` | GET | 发送验证码 | 无 |
-| `/api/user/auth/login/{phone}/{code}` | POST | 手机号验证码登录 | 无 |
-| `/api/user/auth/login` | POST | 微信扫码登录 | 无 |
-| `/api/user/auth/getLoginStatus` | GET | 查询微信登录状态 | 无 |
+| `/api/user/sendCode/{phone}` | GET | 发送验证码 | 无 |
+| `/api/user/login` | POST | 手机号验证码登录 | 无 |
+| `/api/user/auth/userAuth` | POST | 用户实名认证 | JWT |
+| `/api/user/auth/getUserInfo` | GET | 获取当前用户信息 | JWT |
+| `/api/ucenter/wx/getLoginParam` | GET | 获取微信登录参数 | 无 |
 | `/api/user/patient/auth/findAll` | GET | 就诊人列表 | JWT |
-| `/api/user/patient/auth/getById/{id}` | GET | 就诊人详情 | JWT |
+| `/api/user/patient/auth/get/{id}` | GET | 就诊人详情 | JWT |
 | `/api/user/patient/auth/save` | POST | 添加就诊人 | JWT |
 | `/api/user/patient/auth/update` | POST | 修改就诊人 | JWT |
 | `/api/user/patient/auth/remove/{id}` | DELETE | 删除就诊人 | JWT |
-| `/admin/user/info/list` | POST | 后台-用户列表 | JWT |
-| `/admin/user/info/userInfoStatus/{userId}/{status}` | GET | 后台-用户认证审批 | JWT |
+| `/admin/user/login` | POST | 后台-管理员登录 | 无 |
+| `/admin/user/info` | GET | 后台-获取用户信息 | JWT |
+| `/admin/user/logout` | POST | 后台-登出 | JWT |
+| `/admin/user/list` | POST | 后台-用户列表 | JWT |
+| `/admin/user/lock/{userId}/{status}` | GET | 后台-用户锁定 | JWT |
+| `/admin/user/show/{userId}` | GET | 后台-用户详情 | JWT |
+| `/admin/user/approval/{userId}/{authStatus}` | GET | 后台-用户认证审批 | JWT |
 
 ### service-order（订单服务 :8206）
 
 | 路径 | 方法 | 说明 | 鉴权 |
 |------|------|------|------|
 | `/api/order/orderInfo/auth/submitOrder/{scheduleId}/{patientId}` | POST | 提交预约订单 | JWT |
-| `/api/order/orderInfo/auth/getOrders/{page}/{limit}` | GET | 用户订单列表 | JWT |
-| `/api/order/orderInfo/auth/getOrderInfo/{orderId}` | GET | 订单详情 | JWT |
-| `/api/order/orderInfo/auth/cancelOrder/{orderId}` | POST | 取消订单 | JWT |
+| `/api/order/orderInfo/auth/getOrders/{orderId}` | GET | 订单详情 | JWT |
+| `/api/order/orderInfo/auth/list` | POST | 用户订单列表 | JWT |
+| `/api/order/orderInfo/auth/getStatusList` | GET | 订单状态枚举 | JWT |
+| `/api/order/orderInfo/auth/cancelOrder/{orderId}` | GET | 取消订单 | JWT |
 | `/api/order/weixin/createNative/{orderId}` | GET | 创建微信支付二维码 | JWT |
 | `/api/order/weixin/queryPayStatus/{orderId}` | GET | 查询支付状态 | JWT |
 | `/api/order/weixin/callback/notify` | POST | 微信支付回调通知 | 无（签名验证） |

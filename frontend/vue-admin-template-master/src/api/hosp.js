@@ -4,9 +4,9 @@ export default {
   //医院列表
   getHospList(page, limit, searchObj) {
     return request({
-      url: `/admin/hosp/hospital/list/${page}/${limit}`,
-      method: 'get',
-      params: searchObj
+      url: `/admin/hosp/hospital/list`,
+      method: 'post',
+      data: { page, size: limit, ...searchObj }
     })
   },
   //查询dictCode查询下级数据字典
@@ -48,8 +48,9 @@ export default {
   //查看预约规则
   getScheduleRule(page, limit, hoscode, depcode) {
     return request({
-      url: `/admin/hosp/Schedule/getScheduleRule/${page}/${limit}/${hoscode}/${depcode}`,
-      method: 'get'
+      url: `/admin/hosp/Schedule/getScheduleRule`,
+      method: 'post',
+      data: { page, size: limit, hoscode, depcode }
     })
   },
   //查询排班详情

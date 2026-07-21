@@ -20,9 +20,9 @@ export default {
   //订单列表（条件查询带分页）
   getPageList(page, limit, searchObj) {
     return request({
-      url: `${api_name}/auth/${page}/${limit}`,
-      method: 'get',
-      params: searchObj
+      url: `${api_name}/auth/list`,
+      method: 'post',
+      data: { page, size: limit, ...searchObj }
     })
   },
   //订单状态
