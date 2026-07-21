@@ -21,7 +21,7 @@
 
 ## 项目介绍
 
-本项目是一个 **分布式医疗预约挂号平台**，基于 Spring Cloud 微服务架构，采用前后端分离设计，包含 7 个微服务 + 1 个独立服务 + 2 个前���应用。
+本项目是一个 **分布式医疗预约挂号平台**，基于 Spring Cloud 微服务架构，采用前后端分离设计，包含 7 个微服务 + 1 个独立服务 + 2 个前端应用。
 
 ### 前台用户功能（Nuxt.js 用户门户）
 
@@ -52,7 +52,7 @@ Redis 原子扣减（DECR） → Redisson 分布式锁 → 数据库乐观锁（
 
 - **第一层**：Redis `decr` 原子操作预扣减号源，拦截绝大部分并发请求
 - **第二层**：Redisson 分布式锁防止同一用户重复提交
-- **第三层**：数据库 `UPDATE schedule SET available_number = available_number - 1 WHERE available_number > 0` 兜底
+- **第三层**��数据库 `UPDATE schedule SET available_number = available_number - 1 WHERE available_number > 0` 兜底
 
 ### 2. 微信支付 APIv3 全流程
 
@@ -128,7 +128,7 @@ Redis 原子扣减（DECR） → Redisson 分布式锁 → 数据库乐观锁（
 
 ### 业务组件
 
-| 分�� | 技术 | 版本 | 说明 |
+| 分类 | 技术 | 版本 | 说明 |
 |------|------|------|------|
 | 支付 | 微信支付 SDK | APIv3 (0.2.12) | Native 支付、回调验签、退款 |
 | 文件存储 | 阿里云 OSS | 3.9.1 | 图片上传 |
