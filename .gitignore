@@ -1,3 +1,4 @@
+### Java / Maven ###
 HELP.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
@@ -34,3 +35,10 @@ build/
 
 ### Claude AI ###
 CLAUDE.md
+
+### Node.js / Frontend ###
+node_modules/
+.nuxt/
+dist/
+*.log
+.DS_Store
