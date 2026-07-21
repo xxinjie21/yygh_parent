@@ -23,15 +23,27 @@ pom.xml linguist-language=Java linguist-generated=false
 # Gradle（如未来迁移）
 *.gradle linguist-language=Java linguist-vendored=false
 
-# 前端 / 静态资源（如存在）→ 不计入语言统计
-*.html linguist-vendored
-*.css linguist-vendored
-*.js linguist-vendored
-*.vue linguist-vendored
-*.json linguist-vendored
+# 前端 / 静态资源（不计入语言统计）
+*.html linguist-generated
+*.css linguist-generated
+*.js linguist-generated
+*.vue linguist-generated
+*.json linguist-generated
+
+# 图片 / 字体（不计入语言统计）
+*.png linguist-generated
+*.jpg linguist-generated
+*.jpeg linguist-generated
+*.gif linguist-generated
+*.svg linguist-generated
+*.eot linguist-generated
+*.ttf linguist-generated
+*.woff linguist-generated
+*.woff2 linguist-generated
+*.ico linguist-generated
 
 # IDE 配置
-.idea/** linguist-vendored
-*.iml linguist-vendored
-*.iws linguist-vendored
-*.ipr linguist-vendored
+.idea/** linguist-generated
+*.iml linguist-generated
+*.iws linguist-generated
+*.ipr linguist-generated

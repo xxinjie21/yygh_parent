@@ -1,0 +1,11 @@
+# 前端项目 — 不计入语言统计（主体是 Java 项目）
+*.css linguist-generated
+*.js linguist-generated
+*.vue linguist-generated
+*.json linguist-generated
+*.html linguist-generated
+*.scss linguist-generated
+*.less linguist-generated
+*.svg linguist-generated
+*.png linguist-generated
+*.ico linguist-generated
