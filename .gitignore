@@ -36,6 +36,9 @@ build/
 ### Claude AI ###
 CLAUDE.md
 
+### Windows reserved names ###
+backend/nul
+
 ### Node.js / Frontend ###
 node_modules/
 .nuxt/
