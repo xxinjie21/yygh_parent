@@ -40,7 +40,7 @@ CREATE TABLE `order_info`  (
   `number` int NULL DEFAULT NULL COMMENT '预约号序',
   `fetch_time` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '建议取号时间',
   `fetch_address` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '取号地点',
-  `amount` decimal(10, 0) NULL DEFAULT NULL COMMENT '医事服务费',
+  `amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '医事服务费',
   `quit_time` datetime NULL DEFAULT NULL COMMENT '退号时间',
   `order_status` tinyint NULL DEFAULT NULL COMMENT '订单状态',
   `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

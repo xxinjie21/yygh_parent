@@ -29,6 +29,8 @@ import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -75,9 +77,9 @@ public class WeixinServiceImpl implements WeixinService {
             request.setMchid(wechatPayProperties.getPartner());
             request.setDescription("预约挂号-" + order.getHosname());
             request.setOutTradeNo(order.getOutTradeNo());
-            // 金额（元→分）
+            // 金额（元→分），微信要求整数「分」
             Amount amount = new Amount();
-            amount.setTotal(order.getAmount().multiply(new java.math.BigDecimal("100")).intValue());
+            amount.setTotal(toFen(order.getAmount()));
             request.setAmount(amount);
             request.setNotifyUrl(wechatPayProperties.getNotifyUrl());
             // 4 调用SDK统一下单（SDK自动签名、构建HTTP请求）
@@ -123,6 +125,24 @@ public class WeixinServiceImpl implements WeixinService {
     }
 
     /**
+     * 金额换算：元 → 分
+     *
+     * <p>微信支付以「分」为单位且必须为整数。此处先 setScale 指定舍入模式再取值，
+     * 避免 {@code intValue()} 静默丢弃小数导致少收款；
+     * 使用 {@code intValueExact()} 而非 {@code intValue()}，
+     * 金额超出 int 范围时立即抛异常，好过悄悄溢出成错误金额。
+     */
+    private int toFen(BigDecimal amount) {
+        if (amount == null) {
+            throw new IllegalArgumentException("订单金额不能为空");
+        }
+        return amount.multiply(CENT).setScale(0, RoundingMode.HALF_UP).intValueExact();
+    }
+
+    /** 元与分的换算进制 */
+    private static final BigDecimal CENT = new BigDecimal("100");
+
+    /**
      * 微信退款
      * SDK 内置签名和证书管理
      */
@@ -157,9 +177,11 @@ public class WeixinServiceImpl implements WeixinService {
             request.setOutRefundNo("tk" + paymentInfo.getOutTradeNo());
             request.setTransactionId(paymentInfo.getTradeNo());
             AmountReq amountReq = new AmountReq();
-            int refundAmount = orderInfo.getAmount().multiply(new java.math.BigDecimal("100")).intValue();
-            amountReq.setRefund((long) refundAmount);
-            amountReq.setTotal((long) refundAmount);
+            int refundFee = toFen(orderInfo.getAmount());
+            // 退款金额与原订单金额：本项目仅支持全额退款，两者相等；
+            // 若后续支持部分退款，refund 应传入实际退款金额，total 始终为原订单金额
+            amountReq.setRefund((long) refundFee);
+            amountReq.setTotal((long) refundFee);
             amountReq.setCurrency("CNY");
             request.setAmount(amountReq);
             // 调用SDK退款（SDK自动签名、加载证书）

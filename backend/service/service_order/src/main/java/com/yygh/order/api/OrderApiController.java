@@ -29,17 +29,21 @@ public class OrderApiController {
     private final OrderService orderService;
 
 
-    //创建挂号订单
+    //创建挂号订单（校验就诊人归属当前登录用户，防止越权替他人挂号）
     @PostMapping("auth/submitOrder/{scheduleId}/{patientId}")
-    public Result submitOrder(@PathVariable String scheduleId, @PathVariable Long patientId) {
-        Long orderId = orderService.saveOrder(scheduleId, patientId);
+    public Result submitOrder(@PathVariable String scheduleId, @PathVariable Long patientId,
+                              @RequestHeader("token") String token) {
+        Long userId = AuthContextHolder.getUserId(token);
+        Long orderId = orderService.saveOrder(scheduleId, patientId, userId);
         return Result.ok(orderId);
     }
 
-    //根据订单id查询订单详情
+    //根据订单id查询订单详情（校验订单归属，防止遍历orderId查看他人订单）
     @GetMapping("auth/getOrders/{orderId}")
-    public Result<OrderInfoVo> getOrders(@PathVariable String orderId) {
-        OrderInfoVo orderInfoVo = orderService.getOrder(orderId);
+    public Result<OrderInfoVo> getOrders(@PathVariable String orderId,
+                                         @RequestHeader("token") String token) {
+        Long userId = AuthContextHolder.getUserId(token);
+        OrderInfoVo orderInfoVo = orderService.getOrder(orderId, userId);
         return Result.ok(orderInfoVo);
     }
 
@@ -59,10 +63,11 @@ public class OrderApiController {
         return Result.ok(OrderStatusEnum.getStatusList());
     }
 
-    //取消预约
+    //取消预约（校验订单归属，防止越权取消他人订单）
     @GetMapping("auth/cancelOrder/{orderId}")
-    public Result cancelOrder(@PathVariable Long orderId) {
-        Boolean isOrder = orderService.cancelOrder(orderId);
+    public Result cancelOrder(@PathVariable Long orderId, @RequestHeader("token") String token) {
+        Long userId = AuthContextHolder.getUserId(token);
+        Boolean isOrder = orderService.cancelOrder(orderId, userId);
         return Result.ok(isOrder);
     }
 

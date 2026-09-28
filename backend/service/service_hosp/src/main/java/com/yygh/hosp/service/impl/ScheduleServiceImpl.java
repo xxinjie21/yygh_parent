@@ -1,5 +1,7 @@
 package com.yygh.hosp.service.impl;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.alibaba.fastjson.JSONObject;
 import com.yygh.common.exception.YyghException;
 import com.yygh.common.result.ResultCodeEnum;
@@ -20,11 +22,11 @@ import com.yygh.dto.ScheduleQueryDTO;
 import com.yygh.dto.ScheduleSaveDTO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeConstants;
 import org.joda.time.format.DateTimeFormat;
@@ -41,11 +43,20 @@ import java.util.stream.Collectors;
  * 排班服务实现类
  * @author XXJ
  */
-@Slf4j
 @RequiredArgsConstructor
 @Service
 public class ScheduleServiceImpl extends
         ServiceImpl<ScheduleMapper, Schedule> implements ScheduleService {
+    /**
+     * 显式声明 slf4j 日志对象，遮蔽父类 ServiceImpl 继承来的 ibatis Log。
+     *
+     * <p>为什么不能直接依赖 @Slf4j：MyBatis-Plus 的 ServiceImpl 中有一个
+     * <code>protected final org.apache.ibatis.logging.Log log</code> 字段，
+     * Lombok 发现父类已存在同名 log 时会跳过生成，导致此处的 log 是 ibatis 的 Log 实现，
+     * 它没有 info(String, Object...) 这类占位符重载，使用占位符打日志会直接编译失败。
+     */
+    private static final Logger log = LoggerFactory.getLogger(ScheduleServiceImpl.class);
+
 
     private final ScheduleMapper scheduleMapper;
 
@@ -55,8 +66,14 @@ public class ScheduleServiceImpl extends
 
     private final DepartmentService departmentService;
 
-    // 上传排班数据
+    /**
+     * 上传排班数据
+     *
+     * <p>排班新增或更新后必须清空 {@code schedule} 缓存，
+     * 否则 {@link #getDetailSchedule} 会一直返回旧的号源余量。
+     */
     @Override
+    @CacheEvict(value = "schedule", allEntries = true)
     public void save(ScheduleSaveDTO scheduleSaveDTO) {
         String dtoString = JSONObject.toJSONString(scheduleSaveDTO);
         Schedule schedule = JSONObject.parseObject(dtoString, Schedule.class);
@@ -164,9 +181,18 @@ public class ScheduleServiceImpl extends
         List<Schedule> scheduleList =
                 scheduleMapper.selectByHoscodeAndDepcodeAndWorkDate(hoscode, depcode,
                         new DateTime(workDate).toDate());
-        // 遍历设置其他值：医院名称、科室名称、日期对应星期
-        scheduleList.forEach(this::packageSchedule);
-        return scheduleList.stream().map(this::toScheduleVo).collect(Collectors.toList());
+        if (scheduleList.isEmpty()) {
+            return Collections.emptyList();
+        }
+        // 预取公共维度：同一批排班同属一家医院、一个科室，
+        // 只需查询一次，避免每条记录各查一次的 N+1 问题
+        String hosname = hospitalService.getHospName(hoscode);
+        String depname = departmentService.getDepName(hoscode, depcode);
+        List<ScheduleVo> voList = new ArrayList<>(scheduleList.size());
+        for (Schedule schedule : scheduleList) {
+            voList.add(toScheduleVo(packageSchedule(schedule, hosname, depname)));
+        }
+        return voList;
     }
 
     // 获取可预约排班数据
@@ -392,6 +418,20 @@ public class ScheduleServiceImpl extends
     }
 
     /**
+     * 封装排班详情（批量场景重载）
+     *
+     * <p>医院名称与科室名称由调用方预先查好传入。
+     * 单条场景下每条记录都去查一次医院名+科室名没有明显问题，
+     * 但列表查询会退化成 1 + 2N 次查询，因此批量入口统一走这个重载。
+     */
+    private Schedule packageSchedule(Schedule schedule, String hosname, String depname) {
+        schedule.getParam().put("hosname", hosname);
+        schedule.getParam().put("depname", depname);
+        schedule.getParam().put("dayOfWeek", this.getDayOfWeek(new DateTime(schedule.getWorkDate())));
+        return schedule;
+    }
+
+    /**
      * 根据日期获取周几（中文显示）
      */
     private String getDayOfWeek(DateTime dateTime) {
@@ -424,24 +464,43 @@ public class ScheduleServiceImpl extends
         return dayOfWeek;
     }
 
-    // 更新排班可预约数量（供service_order内部调用，原子更新号源）
+    /**
+     * 更新排班可预约数量（供 service_order 内部调用）
+     *
+     * <p>号源扣减使用<b>数据库层原子 UPDATE</b> 作为最后一道兜底：
+     * <pre>
+     *   UPDATE schedule SET available_number = available_number - 1
+     *   WHERE hos_schedule_id = ? AND available_number &gt;= 1
+     * </pre>
+     * 由数据库行锁保证原子性。原实现是「先 SELECT 读出旧值 → 内存加减 → updateById 写回」，
+     * 属于典型的 read-modify-write，并发下两个事务会读到同一个旧值，最终只扣减一次却卖出两个号（超卖）。
+     *
+     * <p>相比加 {@code @Version} 乐观锁字段，行级条件更新无需改表，也不需要额外的重试逻辑。
+     *
+     * @param hosScheduleId 医院侧排班编号
+     * @param delta         变动量，负数表示扣减，正数表示回退
+     */
     @Override
     public void updateAvailableNumber(String hosScheduleId, Integer delta) {
-        LambdaQueryWrapper<Schedule> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Schedule::getHosScheduleId, hosScheduleId);
-        wrapper.eq(Schedule::getIsDeleted, 0);
-        if (delta < 0) {
-            // 扣减时乐观锁：available_number > 0 才允许扣减
-            wrapper.gt(Schedule::getAvailableNumber, 0);
+        if (delta == null || delta == 0) {
+            return;
         }
-        Schedule schedule = baseMapper.selectOne(wrapper);
-        if (schedule != null) {
-            schedule.setAvailableNumber(schedule.getAvailableNumber() + delta);
-            baseMapper.updateById(schedule);
-            log.info("排班号源更新成功，排班编号：{}，变动量：{}，当前剩余：{}",
-                    hosScheduleId, delta, schedule.getAvailableNumber());
+        LambdaUpdateWrapper<Schedule> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Schedule::getHosScheduleId, hosScheduleId)
+                .eq(Schedule::getIsDeleted, 0);
+        if (delta < 0) {
+            // 扣减：余量必须足够，由数据库条件保证不会被扣成负数（防止超卖）
+            // setSql 中的数值来自 Integer 类型的入参，不存在 SQL 注入风险
+            updateWrapper.ge(Schedule::getAvailableNumber, -delta)
+                    .setSql("available_number = available_number - " + Math.abs(delta));
         } else {
-            log.warn("排班记录不存在，排班编号：{}", hosScheduleId);
+            updateWrapper.setSql("available_number = available_number + " + delta);
+        }
+        int rows = baseMapper.update(null, updateWrapper);
+        if (rows > 0) {
+            log.info("排班号源更新成功，排班编号：{}，变动量：{}", hosScheduleId, delta);
+        } else {
+            log.warn("排班号源未发生变动（排班不存在或余量不足），排班编号：{}，变动量：{}", hosScheduleId, delta);
         }
     }
 }
