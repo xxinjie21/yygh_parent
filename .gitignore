@@ -36,6 +36,9 @@ build/
 ### Claude AI ###
 CLAUDE.md
 
+### WorkBuddy ###
+.workbuddy/
+
 ### Windows reserved names ###
 backend/nul
 

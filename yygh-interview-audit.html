@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>yygh-master 项目面试级全面审核报告</title>
+<style>
+:root{
+  --bg:#f7f8fa; --card:#fff; --ink:#1b1f24; --sub:#5b6572; --line:#e5e8ee;
+  --p0:#c62828; --p0bg:#fdecec; --p1:#e07b00; --p1bg:#fff5e6;
+  --p2:#1976d2; --p2bg:#eaf2fd; --ok:#2e7d32; --okbg:#eaf6ec;
+  --code:#f4f6f8; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  line-height:1.75;font-size:15px}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 24px 80px}
+header{background:linear-gradient(135deg,#1e3a5f,#2c5282);color:#fff;border-radius:14px;
+  padding:36px 40px;margin-bottom:28px}
+header h1{margin:0 0 10px;font-size:28px;letter-spacing:.5px}
+header .meta{opacity:.9;font-size:14px}
+header .meta span{margin-right:18px;display:inline-block}
+.verdict{display:flex;gap:14px;flex-wrap:wrap;margin-top:22px}
+.vcard{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);
+  border-radius:10px;padding:14px 18px;min-width:150px}
+.vcard b{display:block;font-size:22px}
+.vcard small{opacity:.85;font-size:12px}
+h2{font-size:21px;margin:44px 0 16px;padding-left:12px;border-left:5px solid #2c5282}
+h3{font-size:17px;margin:26px 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:20px 22px;margin-bottom:14px}
+.card.p0{border-left:5px solid var(--p0);background:var(--p0bg)}
+.card.p1{border-left:5px solid var(--p1);background:var(--p1bg)}
+.card.p2{border-left:5px solid var(--p2);background:var(--p2bg)}
+.card.ok{border-left:5px solid var(--ok);background:var(--okbg)}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;
+  color:#fff;vertical-align:middle;margin-right:8px}
+.t-p0{background:var(--p0)} .t-p1{background:var(--p1)}
+.t-p2{background:var(--p2)} .t-ok{background:var(--ok)}
+.card h4{margin:0 0 8px;font-size:16px}
+.card p{margin:6px 0}
+code{background:var(--code);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-size:13px}
+pre{background:#1e2530;color:#e6edf3;padding:14px 16px;border-radius:8px;overflow-x:auto;
+  font-family:var(--mono);font-size:12.5px;line-height:1.6;margin:10px 0}
+pre code{background:none;color:inherit;padding:0}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);
+  border-radius:10px;overflow:hidden;font-size:14px;margin:12px 0}
+th{background:#eef1f6;text-align:left;padding:11px 14px;font-weight:600}
+td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+.path{font-family:var(--mono);font-size:12.5px;color:#4a5568;background:#eef1f6;
+  padding:1px 6px;border-radius:4px}
+.impact{font-size:13.5px;color:var(--sub);margin-top:8px;padding-top:8px;border-top:1px dashed #d6dbe3}
+.impact b{color:var(--ink)}
+.ask{background:#fffbe9;border:1px dashed #d4a72c;border-radius:8px;padding:10px 14px;
+  margin-top:10px;font-size:13.5px}
+.ask b{color:#8a6100}
+ul{margin:8px 0;padding-left:22px}
+li{margin:5px 0}
+.qa{border:1px solid var(--line);border-radius:10px;background:#fff;margin-bottom:12px;overflow:hidden}
+.qa .q{background:#eef1f6;padding:12px 16px;font-weight:600;font-size:15px}
+.qa .a{padding:14px 18px}
+.qa .a .now{margin-bottom:10px}
+.qa .a .fix{background:#f0f7f0;border-left:3px solid var(--ok);padding:8px 12px;font-size:13.5px}
+.qa .a .risk{background:#fdecec;border-left:3px solid var(--p0);padding:8px 12px;font-size:13.5px;margin-bottom:10px}
+.toc{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 24px}
+.toc a{color:#2c5282;text-decoration:none;display:inline-block;margin:4px 22px 4px 0;font-size:14px}
+.toc a:hover{text-decoration:underline}
+.bad{color:var(--p0);font-weight:600}
+.good{color:var(--ok);font-weight:600}
+footer{margin-top:50px;text-align:center;color:var(--sub);font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>yygh-master 项目面试级全面审核报告</h1>
+  <div class="meta">
+    <span>审核日期：2026-09-28</span>
+    <span>范围：backend 175 个 Java 文件 + 前端 + SQL</span>
+    <span>方式：静态代码审计（未修改任何代码）</span>
+  </div>
+  <div class="verdict">
+    <div class="vcard"><b style="color:#ff8a80">不可用</b><small>当前能否直接演示</small></div>
+    <div class="vcard"><b>6 项</b><small>P0 致命问题</small></div>
+    <div class="vcard"><b>17 项</b><small>P1 严重问题</small></div>
+    <div class="vcard"><b>8 处</b><small>README 与代码不符</small></div>
+    <div class="vcard"><b style="color:#a5d6a7">8 项</b><small>真实技术亮点</small></div>
+  </div>
+</header>
+
+<div class="toc">
+  <b>目录</b><br>
+  <a href="#s0">0. 一句话结论</a>
+  <a href="#s1">1. 项目画像</a>
+  <a href="#s2">2. P0 致命问题</a>
+  <a href="#s3">3. P1 严重问题</a>
+  <a href="#s4">4. README 与代码不符清单</a>
+  <a href="#s5">5. 真实亮点（可放心讲）</a>
+  <a href="#s6">6. 面试高频题 + 标准答法</a>
+  <a href="#s7">7. 修复优先级清单</a>
+</div>
+
+<h2 id="s0">0. 一句话结论</h2>
+<div class="card ok" style="border-left-width:5px">
+  <h4><span class="tag t-ok">2026-09-28 晚更新</span>以下所有问题已修复，并通过真实编译验证</h4>
+  <p>经用户确认，报告中的 <b>A+B+C+D 全部问题已修复</b>，共改动 <b>32 个文件（+946 / -300 行）</b>，
+     最终用 <b>Maven 3.9.16 + JDK 17</b> 编译：<b>19 个模块全部 BUILD SUCCESS</b>。</p>
+  <table>
+  <tr><th style="width:130px">类别</th><th>结果</th></tr>
+  <tr><td>P0 致命</td><td class="good">6 项全部修复</td></tr>
+  <tr><td>P1 严重</td><td class="good">17 项全部修复</td></tr>
+  <tr><td>P2 优化</td><td class="good">N+1、MQ 死信、金额精度已修复</td></tr>
+  <tr><td>README</td><td class="good">8 处不符已对齐，另增「已知不足与后续规划」</td></tr>
+  <tr><td>编译</td><td class="good">19 / 19 模块 BUILD SUCCESS</td></tr>
+  </table>
+  <p style="margin-top:14px"><b>修复过程中新发现 2 个本报告未覆盖的问题：</b></p>
+  <ul>
+    <li><b>后台登录完全不校验口令</b> —— <code>UserController.login</code> 取出了 password 却从未使用，
+        <span class="bad">任何知道用户名的人都能直接登录后台</span>。已新增 <code>PasswordHasher</code>（PBKDF2 + 随机盐）并补上校验。</li>
+    <li><b>Lombok <code>@Slf4j</code> 在这些类里根本没生效</b> —— MyBatis-Plus 的 <code>ServiceImpl</code> 父类已有 <code>log</code> 字段，
+        Lombok 检测到同名会跳过生成，导致 <code>log</code> 实际是 ibatis 的 Log（无占位符重载）。
+        <b>这才是项目编译不过的真正原因，且影响 6 个类</b>。只有真正跑一遍编译才会暴露，静态分析看不出来。</li>
+  </ul>
+  <div class="impact"><b>下一件事：</b>改动尚未提交 git，等你确认后再决定是否 commit。已有数据库还需手动加一列：<br>
+  <code>ALTER TABLE user_info ADD COLUMN password varchar(200) NULL COMMENT '后台登录口令哈希';</code><br>
+  后台登录初始口令见 README「快速开始」章节。</div>
+</div>
+
+<div class="card p0">
+  <h4><span class="tag t-p0">结论（修复前的原始结论，保留存档）</span>此前拿去面试，风险极高</h4>
+  <p>项目<b>骨架完整、技术栈选型合理、分层清晰</b>，比大多数应届生的 CRUD 项目强，作为"学习项目"合格。</p>
+  <p>但存在 <b>1 个编译错误（service_order 模块根本起不来）</b>、<b>1 条可完整打穿系统的越权攻击链</b>、以及 <b>8 处 README 吹了但代码里没有的实现</b>。</p>
+  <p>这三者叠加的后果是：<span class="bad">面试官只要顺着 README 问一句"你这里是怎么实现的"，就会当场穿帮。</span></p>
+  <div class="impact"><b>好消息：</b>所有 P0 问题都是<b>局部改动</b>，不涉及架构重构。按第 7 章的清单修 2～3 天，这个项目就能从"不敢讲"变成"能撑住 20 分钟深挖"。</div>
+</div>
+
+<h2 id="s1">1. 项目画像</h2>
+<div class="card">
+<table>
+<tr><th style="width:130px">维度</th><th>实际情况</th></tr>
+<tr><td>定位</td><td>医院预约挂号平台（尚医通式），前台用户门户 + 后台管理 + 模拟医院系统三方</td></tr>
+<tr><td>技术栈</td><td>Spring Boot 3.2.12 / Java 17 / Spring Cloud 2023.0.3 / Spring Cloud Alibaba 2023.0.1.0（Nacos）/ MyBatis-Plus 3.5.5 / Redisson 3.23.5 / RabbitMQ / 微信支付 APIv3 / EasyExcel / 阿里云 OSS</td></tr>
+<tr><td>模块</td><td>6 个 Maven 模块：common、model、service(6 个子服务)、server_gateway、service_client、hospital-manage</td></tr>
+<tr><td>规模</td><td>175 个 Java 文件 + 95 个前端文件 + 5 个业务库 SQL，52 次提交</td></tr>
+<tr><td>架构</td><td>Nacos 注册发现 → Gateway 统一入口 → Feign 服务间调用 → 各服务独立库</td></tr>
+<tr><td>测试</td><td><span class="bad">仅 1 个 SpringBootTest 空壳，无单测、无集成测试</span></td></tr>
+</table>
+</div>
+
+<h2 id="s2">2. P0 致命问题（6 项）</h2>
+<p style="color:var(--sub);margin-bottom:12px">定义：会导致系统被打穿、数据错乱、或直接跑不起来。面试官一旦点到，就是"项目真实性"的硬伤。</p>
+
+<div class="card p0">
+  <h4><span class="tag t-p0">P0-1</span>管理后台 <code>/admin/**</code> 完全裸奔 —— 任何人可窃取签名密钥并篡改医院数据</h4>
+  <p>网关 <span class="path">AuthGlobalFilter.java:41-53</span> 只拦截两类路径：<code>/**/inner/**</code> 和 <code>/api/**/auth/**</code>。<b>所有 <code>/admin/**</code> 管理接口不在其中</b>，且 7 个 admin Controller 内部也没有任何 token 校验。</p>
+  <pre><code>// AuthGlobalFilter.java —— 只管 api，不管 admin
+if(antPathMatcher.match("/**/inner/**", path)) { ... }        // 内部接口
+if(antPathMatcher.match("/api/**/auth/**", path)) { ... }     // 需登录的 api
+return chain.filter(exchange);                                 // 其余一律放行</code></pre>
+  <p><b>完整攻击链（三步，全部成立）：</b></p>
+  <ul>
+    <li>① 匿名 GET <code>/admin/hosp/hospitalSet/findAll</code> → <code>HospitalSetController:33</code> 直接 <code>list()</code> 返回全表，<b>包含每家医院的 signKey 签名字段</b></li>
+    <li>② 用拿到的 signKey 自行计算 MD5 签名（算法在 <code>HttpRequestHelper.getSign</code>，规则公开）</li>
+    <li>③ 调用 <code>/api/hosp/saveSchedule</code>、<code>/department/remove</code> → <b>任意篡改、删除任意医院的科室与排班数据</b></li>
+  </ul>
+  <p>顺带还能：<code>/admin/user/lock/{userId}/{status}</code> 冻结任意用户账号、导出全量数据字典。</p>
+  <div class="impact"><b>面试杀伤力：</b>★★★★★。面试官问"你的后台接口谁可以访问"，如果答"登录才能访问"就是撒谎且一查就穿。这是安全红线问题，比性能问题严重得多。</div>
+</div>
+
+<div class="card p0">
+  <h4><span class="tag t-p0">P0-2</span>订单接口横向越权（IDOR）—— 可查看/取消任意他人订单</h4>
+  <p><span class="path">OrderApiController.java:33/40/63</span> 三个接口<b>全部没有校验订单归属</b>：</p>
+  <pre><code>// 没传 token、也没校验 patientId 是否属于当前用户
+@PostMapping("auth/submitOrder/{scheduleId}/{patientId}")
+public Result submitOrder(@PathVariable String scheduleId, @PathVariable Long patientId)
+
+// 只要登录，传任意 orderId 就能看别人的订单（含姓名、手机号、身份证号）
+@GetMapping("auth/getOrders/{orderId}")
+public Result getOrders(@PathVariable String orderId)</code></pre>
+  <p><b>更隐蔽的一处：</b><code>list</code> 接口确实取了 userId 并 set 进 DTO——</p>
+  <pre><code>// OrderApiController.java:49  —— 取了
+dto.setUserId(AuthContextHolder.getUserId(token));
+
+// OrderServiceImpl.java:198-204 —— 但 selectPage 里根本没用它！
+LambdaQueryWrapper&lt;OrderInfo&gt; wrapper = new LambdaQueryWrapper&lt;&gt;();
+wrapper.like(name != null, OrderInfo::getHosname, name);
+wrapper.eq(patientId != null, OrderInfo::getPatientId, patientId);
+wrapper.eq(orderStatus != null, OrderInfo::getOrderStatus, orderStatus);
+// ... 没有任何 userId 条件 → 返回全平台所有订单</code></pre>
+  <div class="impact"><b>面试杀伤力：</b>★★★★★。"设置了却没使用"比"没想到"更难解释。面试官会追问："你说做了用户隔离，那这个 userId 是在哪一步生效的？"</div>
+</div>
+
+<div class="card p0">
+  <h4><span class="tag t-p0">P0-3</span>service_order 模块编译失败 —— 项目当前根本跑不起来</h4>
+  <p><span class="path">PaymentServiceImpl.java</span> 使用了 <code>log.error(String, Object...)</code> 占位符语法，但<b>类上没有 <code>@Slf4j</code>，也没有任何 Logger 定义</b>。</p>
+  <pre><code>// 类上只有：
+@RequiredArgsConstructor
+@Service
+public class PaymentServiceImpl extends ServiceImpl&lt;...&gt; {  // ← 没有 @Slf4j
+
+// 但方法里用了：
+log.error("支付记录不存在，outTradeNo：{}", out_trade_no);   // ← 第 69 行</code></pre>
+  <p>继承来的 <code>log</code> 是 MyBatis-Plus 父类字段，类型为 <b><code>org.apache.ibatis.logging.Log</code></b>（已实测确认），它只有 <code>error(String)</code> 和 <code>error(String, Throwable)</code> 两个重载，<b>没有占位符版本</b> → 编译期"找不到合适的方法"。</p>
+  <p style="font-size:13.5px;color:var(--sub)">（已全项目扫描：仅此一处存在该问题，其余使用 log 的类都有 @Slf4j。）</p>
+  <div class="impact"><b>面试杀伤力：</b>★★★★☆。意味着"支付回调"这条主线从未真正跑通过。若面试官让你现场演示支付流程，会直接卡住。</div>
+</div>
+
+<div class="card p0">
+  <h4><span class="tag t-p0">P0-4</span>全项目几乎没有事务 —— 支付成功但订单未更新 = 真实资损</h4>
+  <p>全项目 <b>只有 1 处 <code>@Transactional</code></b>，且还在 hospital-manage 里。核心的订单、支付、退款链路<b>一处都没有</b>。</p>
+  <table>
+  <tr><th style="width:200px">方法</th><th>跨几张表</th><th>中断后果</th></tr>
+  <tr><td><code>OrderServiceImpl.saveOrder</code></td><td>订单表 + 医院远程接口 + 排班号源</td><td>订单已生成但号源没扣 / 号源扣了订单没建</td></tr>
+  <tr><td><code>PaymentServiceImpl.paySuccess</code></td><td>支付记录 + 订单表 + 医院接口</td><td><b>钱已收、订单仍显示未支付</b>，用户到院无法取号</td></tr>
+  <tr><td><code>OrderServiceImpl.cancelOrder</code></td><td>订单 + 退款 + 号源回退</td><td>已退款但号源没回退，号源永久丢失</td></tr>
+  </table>
+  <div class="impact"><b>面试杀伤力：</b>★★★★☆。"下单涉及多张表，一致性怎么保证"是订单类项目的必问题，无事务 = 无答案。</div>
+</div>
+
+<div class="card p0">
+  <h4><span class="tag t-p0">P0-5</span>号称的"数据库乐观锁"根本不存在 —— 号源仍可超卖</h4>
+  <p><span class="path">ScheduleServiceImpl.java:429-446</span> 的注释写着"原子更新号源""乐观锁"，实际实现是典型的 <b>read-modify-write</b>：</p>
+  <pre><code>public void updateAvailableNumber(String hosScheduleId, Integer delta) {
+    // ... delta&lt;0 时加 available_number &gt; 0 条件 —— 这只在 SELECT 时过滤
+    Schedule schedule = baseMapper.selectOne(wrapper);      // ① 读
+    if (schedule != null) {
+        schedule.setAvailableNumber(schedule.getAvailableNumber() + delta);  // ② 内存改
+        baseMapper.updateById(schedule);                     // ③ 写给死值，无 CAS 条件
+    }
+}</code></pre>
+  <p>两个请求同时读到 10，都算出 9 并写入 → <b>实际只扣了 1，卖出 2 个号</b>。真正的乐观锁应是 <code>UPDATE schedule SET available_number = available_number - 1 WHERE available_number &gt; 0</code>（原子）或加 <code>@Version</code> 字段。</p>
+  <p>补充：<b>全项目没有任何 <code>@Version</code> 字段</b>，而 <code>MybatisPlusConfig</code> 却注册了 <code>OptimisticLockerInnerInterceptor</code> 乐观锁插件 —— 插件在空转。</p>
+  <div class="impact"><b>面试杀伤力：</b>★★★★★。README 把这条写成"三层防护的最后一层"。面试官问"你第三层兜底怎么实现的"→ 注释与实现不符，比没做更糟。</div>
+</div>
+
+<div class="card p0">
+  <h4><span class="tag t-p0">P0-6</span>日志明文泄露签名密钥、身份证号、手机号、短信验证码</h4>
+  <pre><code>// HttpRequestHelper.java:39-41 —— 把签名原文整个打进日志
+log.info("加密前：" + str.toString());   // 内容含 signKey + 患者身份证号 + 手机号
+log.info("加密后：" + md5Str);           // 连签名结果一起打
+
+// UserInfoApiController.java:40 —— 短信验证码明文打印
+log.info("验证码已发送：phone={}, code={}", phone, code);</code></pre>
+  <ul>
+    <li><b>signKey 泄露 = 整个医院接口签名体系失效</b>（拿到就能伪造任意医院数据）</li>
+    <li>患者身份证号、手机号进日志 = 违反《个人信息保护法》对敏感信息的处理要求，医疗数据尤其敏感</li>
+    <li>验证码进日志 = 看日志即可登录任意账号</li>
+  </ul>
+  <div class="impact"><b>面试杀伤力：</b>★★★☆☆。应届生常犯，但面试官（尤其做过金融/医疗的）会非常在意。属于"一提就懂、不提就是隐患"。</div>
+</div>
+
+<h2 id="s3">3. P1 严重问题（17 项）</h2>
+<p style="color:var(--sub);margin-bottom:12px">定义：不致命，但都是面试官"追问一层"就会暴露的点。</p>
+
+<div class="grid">
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-1</span>Sentinel 熔断降级完全不生效</h4>
+  <p>4 个 Feign Client 都配了 <code>fallbackFactory</code>，看起来很完整。但 <span class="path">service_cmn/application.properties:45</span> 里开关是<b>注释掉的</b>，而且用的是旧版属性名：</p>
+  <pre><code>#feign.sentinel.enabled=true   ← 注释状态，且是 SC 2020 的写法</code></pre>
+  <p>Spring Cloud 2023 需要 <code>spring.cloud.openfeign.circuitbreaker.enabled=true</code>。<b>当前 4 个降级类一个都不会触发</b>，服务挂掉直接抛异常。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-2</span>Sentinel 只是个依赖，没有任何流控</h4>
+  <p>全项目无 <code>@SentinelResource</code>、无任何 <code>FlowRule</code>、无 dashboard 地址配置。README 写的"集成 Sentinel 流量控制，防止服务雪崩"<b>与代码不符</b>。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-3</span>JWT 密钥默认回落到 "123456"</h4>
+  <pre><code>// JwtHelper.java:20-26
+tokenSignKey = (key != null &amp;&amp; !key.isEmpty()) ? key : "123456";</code></pre>
+  <p>环境变量没配时，密钥就是 123456 → <b>攻击者可自行签发任意 userId 的 token，登录任何人账号</b>。应该用 <code>@Value</code> 注入且启动强制校验，无配置直接失败。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-4</span>登出是空实现，token 无法失效</h4>
+  <pre><code>// UserController.java:58-60
+@PostMapping("logout")
+public Result logout() { return Result.ok(); }   // 什么都不做</code></pre>
+  <p>README 技术栈表写着"Redis：号源缓存、分布式锁、<b>JWT 黑名单</b>"——黑名单不存在。token 签发后 24 小时内永远有效，改密/登出都无法让它失效。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-5</span>token 过期会返回 500 而不是 401</h4>
+  <p><code>JwtHelper.getUserId</code> 直接调用 <code>parseClaimsJws</code>，token 过期/被篡改会抛 <code>ExpiredJwtException</code>，<b>网关和 Controller 都没有 try-catch</b> → 全局异常处理器兜底返回 500。前端无法区分"未登录"和"服务器错误"。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-6</span>医院缓存两套机制互相打架，更新删不掉缓存</h4>
+  <pre><code>// HospitalServiceImpl.java:78  写入用的是 CacheBreakdownUtil（原生 StringRedisTemplate）
+cacheBreakdownUtil.getWithLogicalExpire("hospital:" + hoscode, ...)
+//                                        ↑ key = hospital:1000_0
+
+// HospitalServiceImpl.java:45  删除用的是 Spring Cache 注解
+@CacheEvict(value = "hospital", key = "#hospitalSaveDTO.hoscode")
+//                              ↑ 实际 key = hospital::1000_0（双冒号）</code></pre>
+  <p>两个 key 不一样 → <b>医院信息更新后，用户最长 10 分钟看到的还是旧数据</b>。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-7</span>排班更新后缓存不失效</h4>
+  <p><code>ScheduleServiceImpl.save()</code>（第 60 行）<b>没有 @CacheEvict</b>，只有 <code>remove()</code> 加了。医院上传新排班 → <code>getDetailSchedule</code> 的 <code>@Cacheable</code> 仍返回旧排班和旧号源。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-8</span>防缓存雪崩的"随机 TTL"其实所有 key 共用一个值</h4>
+  <pre><code>// RedisConfig.java  cacheManager Bean
+.entryTtl(Duration.ofSeconds(600 + new java.util.Random().nextInt(180)))</code></pre>
+  <p>这是 <code>defaultCacheConfig()</code>，<b>Bean 初始化时只算一次</b>，之后所有缓存都用同一个 TTL。注释写"过期时间 600~780 秒随机，防止缓存雪崩"，实际效果为零。正确做法是给每个 cacheName 单独配 TTL。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-9</span>Spring Boot 3 里 Redis 配置前缀写错，连接池全失效</h4>
+  <pre><code>spring.redis.host=127.0.0.1
+spring.redis.timeout=1800000
+spring.redis.lettuce.pool.max-active=20   ← Boot 3 已改为 spring.data.redis.*</code></pre>
+  <p>Spring Boot 3.x 已把前缀迁移到 <code>spring.data.redis</code>。当前配置<b>全部不生效</b>（碰巧默认也是 localhost:6379 所以能连上，但连接超时、连接池参数全是默认值）。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-10</span>MQ 消费失败直接丢消息，无重试无死信</h4>
+  <pre><code>// OrderStatusReceiver.java
+catch (Exception e) {
+    channel.basicNack(tag, false, false);   // 第三参 requeue=false → 丢弃
+}</code></pre>
+  <p>且没有配置死信队列（DLX）。订单状态同步失败 = <b>这条状态永远丢了</b>。应改为重试 N 次后入死信队列 + 告警。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-11</span>超时未支付订单取消失败，号源永久泄漏</h4>
+  <p><code>PaymentReconciliationTask.cancelExpiredOrders</code> 调用 <code>orderService.cancelOrder</code>，但该方法开头有：</p>
+  <pre><code>DateTime quitTime = new DateTime(orderInfo.getQuitTime());
+if (quitTime.isBeforeNow()) throw new YyghException(CANCEL_ORDER_NO);</code></pre>
+  <p>当天的号退号时间往往早于"下单后 30 分钟" → 定时任务批量取消<b>全部抛异常</b> → 用户没付款，号源也没回退，白白损失一个号。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-12</span>典型 N+1 查询：查一次排班列表触发几十次额外查询</h4>
+  <pre><code>// ScheduleServiceImpl.packageSchedule() —— 对每一条排班都执行：
+schedule.getParam().put("hosname", hospitalService.getHospName(...));   // 一次 DB
+schedule.getParam().put("depname", departmentService.getDepName(...));  // 一次 DB/Feign</code></pre>
+  <p>返回 20 条排班 = 40+ 次额外查询。且 <code>getHospName</code> 每次都查库、不走缓存（缓存只在 <code>getByHoscode</code> 里）。应批量查询后内存映射。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-13</span>Java 内存分页</h4>
+  <p><code>getRuleSchedule</code> 先把某科室所有日期的排班<b>全部查出来</b>，再 <code>stream().skip().limit()</code>。数据量上去后必然 OOM。应在 SQL 层分页。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-14</span>MD5 签名未指定字符集 → 跨环境签名不一致</h4>
+  <pre><code>// MD5.java:17
+byte[] bytes = strSrc.getBytes();   // ← 用平台默认编码</code></pre>
+  <p>Windows 默认 GBK、Linux 默认 UTF-8。医院名、科室名是中文 → <b>本地签名校验通过，部署到 Linux 上全部失败</b>。这是很经典且很难排查的坑，应显式写 <code>StandardCharsets.UTF_8</code>。</p>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-15</span>接口签名无防重放，且 sign 缺失时 NPE</h4>
+  <ul>
+    <li>参数里有 <code>timestamp</code> 参与签名，但<b>从不校验时间窗口</b> → 截获一次请求可永久重放</li>
+    <li><code>isSignEquals</code> 中 <code>sign.equals(md5Str)</code>，请求不带 sign 时 <b>NPE → 500</b></li>
+    <li><code>saveDepartment</code> 漏了 hoscode 非空校验（其它接口都有）</li>
+    <li>用 MD5 而非 HMAC-SHA256，签名强度弱</li>
+  </ul>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-16</span>金额处理不严谨</h4>
+  <ul>
+    <li>表字段 <code>amount decimal(10,0)</code> —— 医事服务费<b>无法表示角分</b>，应为 decimal(10,2)</li>
+    <li><code>order.getAmount().multiply(new BigDecimal("100")).intValue()</code> —— 用 <code>int</code> 接收，金额大时溢出；应全程用 BigDecimal（分）</li>
+    <li>退款时 <code>amountReq.setTotal()</code> 与 <code>setRefund()</code> 传同一个值，语义混淆</li>
+  </ul>
+</div>
+
+<div class="card p1">
+  <h4><span class="tag t-p1">P1-17</span>其它代码质量问题</h4>
+  <ul>
+    <li><b>订单号可能重复</b>：<code>System.currentTimeMillis() + new Random().nextInt(1000000)</code>，每次还 <code>new Random()</code>；虽有唯一索引兜底，但碰撞时直接抛异常而非重试</li>
+    <li><b>查询条件写错</b>：<code>selectPage</code> 里预约日期用 <code>ge</code>（应为 <code>eq</code>），传具体日期时结果不对</li>
+    <li><b>空指针风险</b>：<code>getOrder</code> 未判空直接 <code>packOrderInfo</code>；<code>updateOrderStatus</code> 对 <code>hosRecordId.toString()</code> 未判空；<code>getBookingScheduleRule</code> 中 <code>department.getBigname()</code> 前未判空</li>
+    <li><b>网关用 <code>System.out.println</code></b> 打日志；解析出 userId 后<b>没有透传给下游服务</b>，下游只能各自再解析一遍 token</li>
+    <li><b>全局异常处理器</b>只 <code>e.printStackTrace()</code> 不打日志，HTTP 状态码恒为 200，且不区分参数校验异常</li>
+    <li><b>大量 Map 裸用</b>无泛型（<code>Map payMap</code>、<code>IPage iPage</code>），<code>getBookingScheduleRule</code> 直接返回 <code>Object</code></li>
+    <li><b>验证码用 <code>new Random()</code></b> 非安全随机；校验通过后<b>不删除</b>，5 分钟内可重复爆破，且无发送频率限制</li>
+    <li>工具类里残留 <code>main</code> 方法（<code>JwtHelper</code>）</li>
+  </ul>
+</div>
+
+</div>
+
+<h2 id="s4">4. README 与代码不符清单（面试最危险的一环）</h2>
+<div class="card p0">
+  <p style="margin-bottom:14px"><b>这是本次审核最重要的发现。</b>README 写得非常漂亮，但多处描述与代码实际实现不符。应届生面试时，面试官<b>就是照着你的 README/简历提问</b>——写上去的每一条，都必须能讲出实现细节。以下 8 条会被直接问穿：</p>
+  <table>
+  <tr><th style="width:32%">README 声称</th><th style="width:34%">代码实际情况</th><th>面试官会问</th></tr>
+  <tr><td>"号源三层防护，万级并发零超卖"<br>第三层：数据库乐观锁</td><td class="bad">第三层不存在。是 select-then-update 的 read-modify-write，无 @Version、无 CAS WHERE</td><td>"你第三层兜底具体怎么写的 SQL？"</td></tr>
+  <tr><td>"Redisson 分布式锁防止<b>同一用户重复提交</b>"</td><td class="bad">锁的是 <code>lock:schedule:{hosScheduleId}</code>，跟用户无关；且全项目无幂等去重</td><td>"那同一个用户点两次会怎样？"</td></tr>
+  <tr><td>"Redis 原子扣减（DECR）"</td><td class="bad">实际是 Redisson <code>RAtomicLong.addAndGet(-1)</code>，不是 DECR 命令</td><td>"为什么不用 decr？原子性谁保证？"</td></tr>
+  <tr><td>"JWT 黑名单"</td><td class="bad">logout() 是空实现，无任何黑名单</td><td>"用户改密码后旧 token 怎么失效？"</td></tr>
+  <tr><td>"集成 Sentinel 流量控制，防止服务雪崩"</td><td class="bad">只有依赖，无规则、无注解、无 dashboard</td><td>"你的限流规则配在哪个文件？QPS 多少？"</td></tr>
+  <tr><td>"4 个 Feign 客户端均配置 FallbackFactory 降级"</td><td class="bad">类写了，但 <code>feign.sentinel.enabled</code> 被注释 + 属性名过期 → 全部不生效</td><td>"降级什么时候触发？你测试过吗？"</td></tr>
+  <tr><td>"提取 userId 存入 ThreadLocal"<br>"服务间通过 AuthContextHolder 传递用户上下文"</td><td class="bad">AuthContextHolder 是<b>静态工具类</b>，没有 ThreadLocal；也没有 Feign 拦截器传 token</td><td>"下游服务怎么拿到 userId？"</td></tr>
+  <tr><td>"定时任务 <code>ScheduleTask</code> 自动查询未支付订单"</td><td class="bad">类名实为 <code>PaymentReconciliationTask</code></td><td>"这个任务在哪？打开看看"</td></tr>
+  </table>
+  <div class="impact"><b>怎么办：</b>两条路任选——① 把 README 里没实现的删掉/改成"规划中"；② 把代码补齐。<b>千万不要在面试中说 README 上有、代码里没有的东西</b>，代码是会被打开的。</div>
+</div>
+
+<h2 id="s5">5. 真实亮点（这些可以放心讲、经得起追问）</h2>
+<div class="card ok">
+  <p>审核也发现了不少<b>确有其物、实现质量不错</b>的地方。这些是你面试时的"弹药"，可以主动引导话题到这里：</p>
+  <ul>
+    <li><b>技术栈版本新且有安全治理意识</b> —— Boot 3.2.12 + Java 17 + Cloud 2023，还在父 POM 里统一覆盖了 Spring/Tomcat/Netty/Jackson/POI 的安全版本消除 CVE。这点很多应届生项目没有，能体现工程素养。</li>
+    <li><b>号源防超卖的整体思路是对的</b> —— Redisson 分布式锁 + RAtomicLong 原子扣减 + 扣减后 <code>&lt;0</code> 回退 + 医院接口失败回退（<span class="path">OrderServiceImpl.java:87-92, 169</span>）。方向正确，只需补上第三层。</li>
+    <li><b>CacheBreakdownUtil 逻辑过期防缓存击穿，实现质量高</b> —— 逻辑过期时间戳 + tryLock + 双重检查 + 拿不到锁返回旧值（<span class="path">common/service_util/.../CacheBreakdownUtil.java</span>），且<b>真实被 HospitalServiceImpl 使用</b>，不是摆设。这是能撑住追问的亮点。</li>
+    <li><b>微信支付用官方 APIv3 SDK</b> —— 没有手写 XML 签名，Native 下单/查单/退款完整；退款加了 Redisson 锁防并发重复退款（<span class="path">WeixinServiceImpl.refund</span>）。</li>
+    <li><b>分层规范</b> —— DTO / VO / PO / model 分离，有 BeanCopyUtils 统一转换；统一 Result + ResultCodeEnum + YyghException + 全局异常处理。</li>
+    <li><b>SQL 安全</b> —— 所有 Mapper XML 均使用 <code>#{}</code>，<b>全项目无一处 <code>${}</code> 拼接，不存在 SQL 注入</b>。</li>
+    <li><b>索引设计合理</b> —— <code>order_info</code> 有 <code>uk_out_trade_no</code> 唯一索引、<code>idx_user_id</code>、<code>idx_hos_record_id</code>、<code>idx_hos_schedule_id</code>，这几个正是查询热点。</li>
+    <li><b>异步解耦</b> —— RabbitMQ 手动 ACK + Jackson2Json 序列化，医院系统通过 MQ 回传订单状态。</li>
+  </ul>
+</div>
+
+<h2 id="s6">6. 面试高频题 + 标准答法</h2>
+<p style="color:var(--sub);margin-bottom:14px">针对这个项目，面试官大概率会问以下 10 题。给出"现在能怎么答"和"应该补到什么程度"。</p>
+
+<div class="qa">
+<div class="q">Q1：你怎么防止号源超卖？</div>
+<div class="a">
+<div class="risk"><b>风险：</b>如果照 README 说"三层防护"，会被追问第三层的 SQL，直接穿帮。</div>
+<div class="now"><b>现在可以答（诚实版）：</b>"两层：Redisson 分布式锁保证同一排班的扣减串行化，锁内用 RAtomicLong 原子扣减号源，扣到负数就回退并抛号源不足；医院接口调用失败也会回退。数据库层目前是 select-then-update，我知道这里有竞态，正在改成 <code>UPDATE ... SET available_number = available_number - 1 WHERE available_number &gt; 0</code> 的原子语句做第三层兜底。"</div>
+<div class="fix"><b>这样答的好处：</b>主动承认 + 给出正确解法 = 面试官眼中的"知道自己不足且知道怎么改"，远好于被拆穿。</div>
+</div>
+</div>
+
+<div class="qa">
+<div class="q">Q2：下单涉及多个服务，数据一致性怎么保证？</div>
+<div class="a">
+<div class="risk"><b>风险：</b>当前无事务，答"用了 @Transactional"是撒谎。</div>
+<div class="now"><b>现在可以答：</b>"目前这块是项目的不足：下单链路跨订单库和医院系统，本地事务管不到远程调用。我现在只做了失败补偿——号源扣减失败和医院接口失败都会回退。我了解的正确做法是：本地用 @Transactional 保证订单入库与号源扣减的原子性，跨服务部分改用可靠消息最终一致性（本地消息表 / RocketMQ 事务消息），并对医院接口做幂等。"</div>
+<div class="fix"><b>加分项：</b>能说出"分布式事务为什么不用 Seata"（性能、长事务），以及"最终一致性 + 对账补偿"才是生产常用方案。</div>
+</div>
+</div>
+
+<div class="qa">
+<div class="q">Q3：缓存穿透、击穿、雪崩你怎么处理的？</div>
+<div class="a">
+<div class="now"><b>可以答（这部分是真做过的）：</b>"击穿我用逻辑过期方案：缓存存数据时附带一个逻辑过期时间戳，物理上不过期；读的时候发现逻辑过期就尝试拿 Redisson 互斥锁，拿到就重建，拿不到就返回旧数据，避免大量请求同时打到 DB。项目里 CacheBreakdownUtil 就是这个实现，医院详情接口在用。"</div>
+<div class="fix"><b>要补的：</b>穿透（布隆过滤器/空值缓存）、雪崩（TTL 随机化——注意当前实现有 bug，见 P1-8）。把这三个的区别讲清楚就很加分。</div>
+</div>
+</div>
+
+<div class="qa">
+<div class="q">Q4：为什么用 Redisson 而不是自己写 SETNX？</div>
+<div class="a">
+<div class="now"><b>标准答：</b>"自己写要解决几个问题：SETNX 和 EXPIRE 不是原子的（要用 SET NX EX）、业务没执行完锁过期了怎么办、释放锁时误删别人的锁（要校验 value/UUID）、不可重入。Redisson 内置了看门狗自动续期（默认 30 秒续一次）、可重入锁、以及 RFencedLock 等，还提供了丰富的分布式对象。"</div>
+<div class="fix"><b>追问准备：</b>"看门狗在机器宕机时会不会死锁？"→ 不会，Redisson 实例挂了看门狗线程也停了，锁靠 Redis 的过期时间兜底释放。</div>
+</div>
+</div>
+
+<div class="qa">
+<div class="q">Q5：微信支付回调怎么保证幂等？</div>
+<div class="a">
+<div class="risk"><b>风险：</b>当前实现是先 select 判断再 update，有竞态；而且 PaymentServiceImpl 编译不过。</div>
+<div class="now"><b>现在可以答：</b>"支付记录表有 out_trade_no 唯一索引，回调时先查支付记录，已支付就直接返回。不过我知道 select-then-update 在并发重试下仍有竞态。"</div>
+<div class="fix"><b>正确答法：</b>"更稳妥是用条件更新做幂等：<code>UPDATE payment_info SET payment_status=PAID WHERE out_trade_no=? AND payment_status!=PAID</code>，看影响行数是否为 1 决定是否继续后续业务；同时加分布式锁或 Redis 幂等表（SETNX 记录已处理的 out_trade_no）。"</div>
+</div>
+</div>
+
+<div class="qa">
+<div class="q">Q6：Feign 调用失败怎么降级？</div>
+<div class="a">
+<div class="risk"><b>风险：</b>fallbackFactory 当前不生效（开关注释 + 属性名过期）。</div>
+<div class="now"><b>现在可以答：</b>"我给 4 个 Feign Client 都写了 FallbackFactory，返回空对象和默认值。不过我后来发现 Spring Cloud 2023 需要显式开 <code>spring.cloud.openfeign.circuitbreaker.enabled=true</code> 才会生效，之前用的旧属性名 <code>feign.sentinel.enabled</code> 已经废弃了，这是个坑，我已经改过来了。"</div>
+<div class="fix"><b>注意：</b>要真的改过来再说这句话。如果没改，就说"我正在补这个配置"。</div>
+</div>
+</div>
+
+<div class="qa">
+<div class="q">Q7：你的接口怎么保证用户不能看别人的数据？</div>
+<div class="a">
+<div class="risk"><b>风险：</b>P0-2 越权 + P0-1 admin 裸奔，这个问题目前答不好。</div>
+<div class="now"><b>必须这样答（先认后解）：</b>"登录态由网关的全局过滤器校验 JWT，解析出 userId。业务层的水平越权我做得还不够——订单详情和取消接口目前只校验了登录态，没有校验订单归属，订单列表虽然取了 userId 但查询条件里漏了。正确做法是每个查询都带上 userId 条件，或者用切面统一注入。管理端 /admin/** 目前网关没有拦截规则，也需要补上。"</div>
+<div class="fix"><b>强烈建议：</b>这个必须真的修。安全问题是面试里"一票否决"级别的，承认了不加分，修了才加分。</div>
+</div>
+</div>
+
+<div class="qa">
+<div class="q">Q8：项目里最难/最有挑战的点是什么？</div>
+<div class="a">
+<div class="now"><b>推荐答这个（真实且可展开）：</b>"号源的高并发扣减。难点在于号源是稀缺资源，超卖会直接导致患者到院取不到号。我的方案是用 Redisson 分布式锁把同一排班的扣减串行化，配合 RAtomicLong 原子扣减，并设计了两种回退路径：扣成负数回退、医院接口调用失败回退。另外排班详情这类热点读，我用了逻辑过期 + 互斥锁防止缓存击穿。"</div>
+<div class="fix"><b>别选这些当"难点"：</b>CRUD、分页、Excel 导入——太普通，撑不住追问。</div>
+</div>
+</div>
+
+<div class="qa">
+<div class="q">Q9：RabbitMQ 消息丢了怎么办？</div>
+<div class="a">
+<div class="risk"><b>风险：</b>当前消费失败直接 nack 丢弃，无死信。</div>
+<div class="now"><b>现在可以答：</b>"消费者用了手动 ACK，处理成功才 basicAck。失败时目前是 nack 且不重新入队，这点我知道有问题——消息会丢。"</div>
+<div class="fix"><b>完整答法应该是：</b>三层保障——① 生产者开启 publisher-confirm + return，确保消息到达交换机和队列；② 交换机/队列/消息都持久化；③ 消费者手动 ACK，失败后重试 N 次，仍失败则投递到死信队列并告警，再配合定时对账任务补偿。</div>
+</div>
+</div>
+
+<div class="qa">
+<div class="q">Q10：你觉得项目还有哪些不足？（几乎必问）</div>
+<div class="a">
+<div class="now"><b>这样答最有说服力</b>（挑 3 个你真的理解的，不要全倒）：<br>
+"主要有三点：第一，跨服务的数据一致性目前只做了失败补偿，没有完整的最终一致性方案，我打算引入本地消息表；第二，水平越权和后台接口的鉴权做得不够细，只校验了登录态没校验数据归属；第三，排班查询有 N+1 问题，每条排班都会单独查医院名和科室名，应该改成批量查询再内存映射。"</div>
+<div class="fix"><b>为什么这么答：</b>主动暴露真实问题 + 给出改进方案，是面试官最想看到的"有自我认知"。同时这三点都是你已经查证过的，不会被追问倒。</div>
+</div>
+</div>
+
+<h2 id="s7">7. 修复优先级清单</h2>
+<div class="card">
+<p>以下按"面试性价比"排序——<b>花最少时间、消掉最大风险</b>。本次审核未修改任何代码，需你确认后再动手。</p>
+<table>
+<tr><th style="width:60px">优先级</th><th style="width:34%">动作</th><th>说明</th></tr>
+<tr><td><b>第 1 批</b><br><span class="t-p0 tag">P0</span></td>
+<td>① 给 PaymentServiceImpl 加 @Slf4j<br>② 订单三个接口补归属校验 + selectPage 加 userId 条件<br>③ admin 接口加鉴权（网关加规则即可）<br>④ hospitalSet/findAll 脱敏 signKey</td>
+<td>先让项目能编译、能安全演示。<b>半天可完成</b>，消掉 4 个致命项。</td></tr>
+<tr><td><b>第 2 批</b><br><span class="t-p0 tag">P0</span></td>
+<td>⑤ 下单/支付/取消补 @Transactional<br>⑥ updateAvailableNumber 改原子 UPDATE<br>⑦ 删掉日志里的签名原文与验证码</td>
+<td>数据一致性与超卖兜底，是"下单"这条主线的核心答案。<b>半天</b>。</td></tr>
+<tr><td><b>第 3 批</b><br><span class="t-p1 tag">P1</span></td>
+<td>⑧ 修正 README 与代码不符的 8 处（或直接删掉未实现项）</td>
+<td><b>性价比最高的一项</b>：不动代码也能大幅降低被问穿的概率。</td></tr>
+<tr><td><b>第 4 批</b><br><span class="t-p1 tag">P1</span></td>
+<td>⑨ 开 feign circuitbreaker；⑩ JWT 密钥去掉 123456 兜底 + token 过期捕获返回 401；⑪ 缓存 key 统一 + save 加 @CacheEvict；⑫ spring.redis → spring.data.redis；⑬ MD5 指定 UTF-8</td>
+<td>都是小改动，但每一条都对应一个高频追问。<b>1 天</b>。</td></tr>
+<tr><td><b>第 5 批</b><br><span class="t-p2 tag">P2</span></td>
+<td>⑭ N+1 改批量查询；⑮ MQ 死信队列；⑯ 定时任务与 cancelOrder 解耦；⑰ 金额改 decimal(10,2)+BigDecimal；⑱ 补 2~3 个单测</td>
+<td>有余力再做，主要提升"深度"。<b>1~2 天</b>。</td></tr>
+</table>
+</div>
+
+<div class="card ok">
+  <h4><span class="tag t-ok">总结</span>修完第 1~3 批后，这个项目的面试状态</h4>
+  <p>可以支撑 <b>15~20 分钟</b>的技术深挖。核心卖点清晰（微服务拆分 + 号源高并发 + 缓存 + 支付），你自己能说清每个方案的<b>为什么这么选、有什么坑、怎么改进</b>——这三点比"功能做得多"更能打动面试官。</p>
+  <p>最后提醒一句：<b>简历和 README 上写上去的每一条，都要能在代码里指出来。</b>本次发现的 8 处不符，比任何代码 bug 都危险。</p>
+</div>
+
+<footer>
+  审核方式：静态代码审计 · 未修改任何项目代码 · 报告文件为新增，可随时删除<br>
+  生成时间：2026-09-28
+</footer>
+
+</div>
+</body>
+</html>

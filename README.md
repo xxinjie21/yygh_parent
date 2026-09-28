@@ -44,15 +44,18 @@
 
 ## 核心特性
 
-### 1. 号源高并发防护（三层防护，万级并发零超卖）
+### 1. 号源高并发防护（三层防护）
 
 ````
-Redis 原子扣减（DECR） → Redisson 分布式锁 → 数据库乐观锁（UPDATE WHERE available > 0）
+分布式锁串行化 → Redis 原子扣减 → 数据库条件原子 UPDATE
 ````
 
-- **第一层**：Redis `decr` 原子操作预扣减号源，拦截绝大部分并发请求
-- **第二层**：Redisson 分布式锁防止同一用户重复提交
-- **第三层：数据库** `UPDATE schedule SET available_number = available_number - 1 WHERE available_number > 0` 兜底
+- **第一层**：Redisson 分布式锁，按 `hosScheduleId` 加锁，把同一排班的并发扣减串行化
+- **第二层**：锁内用 Redisson `RAtomicLong.addAndGet(-1)` 原子预扣减 Redis 号源；扣减后为负数则立即回退并抛出「号源不足」
+- **第三层**：数据库兜底 `UPDATE schedule SET available_number = available_number - 1 WHERE hos_schedule_id = ? AND available_number >= 1`，由行锁保证原子性，即使 Redis 侧失效也不会超卖
+- **回退补偿**：医院接口调用失败、取消预约、超时未支付三种场景均会回退 Redis 号源与 MySQL 余量
+
+> 说明：三层防护解决的是**并发超卖**，不能替代幂等去重。同一用户对同一排班的重复下单目前未做专门去重。
 
 ### 2. 微信支付 APIv3 全流程
 
@@ -65,29 +68,54 @@ Redis 原子扣减（DECR） → Redisson 分布式锁 → 数据库乐观锁（
 - 基于微信官方 `wechatpay-java:0.2.12` SDK（APIv3）
 - 支持 Native 扫码支付、支付回调自动验签+解密、退款
 - `PaymentInfo` 记录每次支付流水，`RefundInfo` 记录退款流水
-- 定时任务 `ScheduleTask` 自动查询未支付订单状态
+- 支付回调**幂等**：以带状态条件的 `UPDATE ... WHERE payment_status != PAID` 实现，按影响行数判断是否重复通知
+- 支付记录与订单状态在同一本地事务内更新；医院侧同步失败不回滚（避免已扣款却查不到支付状态），由日志留痕等待补偿
+- 定时任务 `PaymentReconciliationTask` 每 10 分钟扫描 30 分钟未支付的订单并自动取消回退号源
 
-### 3. JWT 网关统一鉴权
+### 3. 网关统一鉴权
 
 ````
-客户端请求 → Gateway AuthGlobalFilter → 拦截 /api/**/auth/** 路径
-           → 从 Header 提取 token → JwtHelper 解析 JWT
-           → 提取 userId 存入 ThreadLocal → 路由转发到对应微服务
+客户端请求 → Gateway AuthGlobalFilter
+           → 拦截 /**/inner/**（内网接口禁止外网访问）
+           → 校验 /api/**/auth/** 与 /admin/** 必须携带有效 token
+           → JwtHelper 解析 JWT 提取 userId
+           → 以 X-User-Id 请求头透传给下游微服务 → 路由转发
 ````
 
 - 内部接口 `/**/inner/**` 直接拦截，返回 `PERMISSION` 错误
-- 未携带 token 或 token 无效返回 `LOGIN_AUTH` 错误
-- 服务间调用通过 Feign Header 传递 `token`
+- 用户端需登录接口与**后台管理接口**均纳入校验，未携带或无效 token 返回 `LOGIN_AUTH` 错误
+- token 过期、签名不符、被篡改时统一按「未登录」处理（返回 401 语义的 `LOGIN_AUTH`），不会退化成 500
+- 解析失败的 token 返回 null 而非抛异常，避免异常穿透到全局处理器
+- 业务层对订单、就诊人做**归属校验**（`userId` 比对），防止横向越权；订单列表按 userId 做行级过滤
+- 医院 `signKey` 属于核心凭据，接口对外返回时统一脱敏为 `******`；日志中不打印签名原文
+- 后台登录使用 **PBKDF2WithHmacSHA256 + 随机盐**（10 万次迭代）校验口令，口令永不落明文
 
-### 4. Feign + Sentinel 熔断降级
+> 已知不足：JWT 为无状态设计，未实现黑名单机制，登出后 token 在其剩余有效期内仍可通过校验。
+> 生产环境应引入 Redis token 黑名单或在网关侧做校验。
 
-``java
-@FeignClient(value = "service-hosp", fallbackFactory = HospitalFeignClientFallback.class)
-``
+### 4. Feign 熔断降级
 
-- 4 个 Feign 客户端均配置 `FallbackFactory` 降级逻辑
-- 集成 Sentinel 流量控制，防止服务雪崩
-- 服务间通过 `AuthContextHolder` 传递用户上下文
+````java
+@FeignClient(value = "service-hosp", fallbackFactory = HospitalFeignClientFallbackFactory.class)
+````
+
+- 4 个 Feign 客户端均配置 `FallbackFactory` 降级逻辑，远程调用失败时返回空对象/默认值而非直接抛错
+- 通过 `spring.cloud.openfeign.circuitbreaker.enabled=true` 开启降级。
+  **Spring Cloud 2023 起该开关默认关闭**，不显式开启时 `fallbackFactory` 不会触发；
+  旧写法 `feign.sentinel.enabled=true` 已废弃，这里是最容易踩的一个坑
+- 引入 `spring-cloud-starter-alibaba-sentinel`，可接入 Sentinel Dashboard 配置流控与熔断规则
+
+> 已知不足：当前未配置具体的流控/熔断规则，Sentinel 只提供了能力底座，
+> 规则需要在 Dashboard 上按需配置（配置项已保留在 `application.properties` 注释中）。
+
+### 4.1 消息可靠性
+
+- 订单队列配置了**死信交换机**（`yygh.order.dlx.exchange`）与死信队列（`yygh.order.dlq`）
+- 消费失败的消息不会被丢弃，而是转入死信队列并有专门监听打印告警，便于排查与人工重投
+- 消费者使用手动 ACK，处理成功才确认
+
+> 已知不足：尚未开启 `publisher-confirm` / `publisher-return`，
+> 生产者到 Exchange 这一段仍存在极小概率的丢失风险。
 
 ### 5. EasyExcel 数据字典批量导入
 
@@ -122,7 +150,7 @@ Redis 原子扣减（DECR） → Redisson 分布式锁 → 数据库乐观锁（
 |------|------|------|------|
 | ORM | MyBatis-Plus | 3.5.5 | 分页插件、乐观锁插件 |
 | 数据库 | MySQL | 8.x | 5 个业务库 |
-| 缓存 | Redis | 6.x | 号源缓存、分布式锁、JWT 黑名单 |
+| 缓存 | Redis | 6.x | 号源缓存、分布式锁、逻辑过期热点缓存 |
 | 分布式锁 | Redisson | 3.23.5 | 号源扣减、缓存击穿防护 |
 | 消息队列 | RabbitMQ | 3.9.x | 异步解耦 |
 
@@ -338,9 +366,12 @@ export ALIYUN_OSS_ENDPOINT=your_endpoint
 export WECHAT_OPEN_APP_ID=your_app_id
 export WECHAT_OPEN_APP_SECRET=your_app_secret
 
-# JWT 签名密钥
+# JWT 签名密钥（务必配置，缺失时会回落到开发默认值并打印 WARN 告警）
 export JWT_SIGN_KEY=your_jwt_secret
 ```
+
+> **后台登录初始口令**：初始化 SQL 中三个演示账号（`yiyi` / `猫猫一号` / `cc`）的口令均为 `admin123`。
+> 口令以 PBKDF2 哈希存储，正式环境部署请务必第一时间修改。
 
 ### 5. 启动服务
 
@@ -530,6 +561,31 @@ export JWT_SIGN_KEY=your_jwt_secret
 ### Q: hospital-manage 无法注册到 Nacos？
 
 `hospital-manage` 是独立服务，设计上不注册到 Nacos。它通过 `HttpRequestHelper` 直接 HTTP 调用 `service_hosp` 的接口（需要签名验证）。
+
+### Q: 继承 MyBatis-Plus ServiceImpl 的类里 `log.info("xxx {}", a)` 编译报错？
+
+MyBatis-Plus 的 `ServiceImpl` 父类中有一个 `protected final org.apache.ibatis.logging.Log log` 字段，
+Lombok 发现父类已存在同名 `log` 时会<b>跳过生成</b> `@Slf4j` 的字段，
+于是这里的 `log` 实际是 ibatis 的 Log —— 它没有占位符重载，编译期就会报错。
+解法是在子类里显式声明 slf4j 字段遮蔽父类字段：
+
+```java
+private static final Logger log = LoggerFactory.getLogger(XxxServiceImpl.class);
+```
+
+---
+
+## 已知不足与后续规划
+
+| 问题 | 现状 | 改进方向 |
+|------|------|----------|
+| JWT 无状态登出 | 登出后 token 在剩余有效期内仍有效 | 引入 Redis token 黑名单，或在网关层校验 |
+| 下单一致性 | 依赖本地事务 + 失败补偿，事务内含远程调用 | 改用「本地消息表 + 可靠消息最终一致性」，把 HTTP 调用移出事务 |
+| Sentinel 缺少规则 | 仅引入依赖与 Feign 降级开关 | 在 Dashboard 配置 QPS 限流、慢调用熔断规则 |
+| 排班聚合分页 | `getRuleSchedule` 在 JVM 内存中做分页 | 改为 SQL 层 `GROUP BY + LIMIT` 分页 |
+| 生产者消息确认 | 未开启 confirm / return | 补齐 publisher-confirm，配合本地消息表做兜底重投 |
+| 同一用户重复下单 | 未做幂等去重 | 增加订单幂等表（userId + scheduleId 唯一索引） |
+| 单元测试缺失 | 仅有 1 个 SpringBootTest 空壳 | 补充 Service 层单测，尤其是号源扣减与支付幂等 |
 
 ---
 
