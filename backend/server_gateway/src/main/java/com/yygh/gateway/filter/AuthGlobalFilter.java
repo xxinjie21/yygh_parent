@@ -14,9 +14,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -24,10 +27,32 @@ import java.util.List;
  * 全局Filter，统一处理会员登录与外部不允许访问的服务 网关登录校验
  * </p>
  *
+ * <p>拦截规则：
+ * <ol>
+ *   <li>内部服务间调用接口，禁止外网访问</li>
+ *   <li>用户端需登录接口，必须携带有效 token</li>
+ *   <li>后台管理接口，同样必须携带有效 token</li>
+ * </ol>
+ *
  * @author XXJ
  */
 @Component
 public class AuthGlobalFilter implements GlobalFilter, Ordered {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthGlobalFilter.class);
+
+    /** 网关鉴权通过后向下游透传的用户ID请求头 */
+    private static final String USER_ID_HEADER = "X-User-Id";
+
+    /**
+     * 后台接口中无需登录即可访问的放行列表。
+     *
+     * <p>登录接口本身如果要求登录，就会形成「先要 token 才能登录」的死锁，
+     * 因此必须在此放行。除此之外所有 /admin/** 均要求有效 token。
+     */
+    private static final List<String> ADMIN_WHITELIST = Arrays.asList(
+            "/admin/user/login"
+    );
 
     private AntPathMatcher antPathMatcher = new AntPathMatcher();
 
@@ -35,21 +60,29 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
-        System.out.println("==="+path);
 
         //内部服务接口，不允许外部访问
-        if(antPathMatcher.match("/**/inner/**", path)) {
+        if (antPathMatcher.match("/**/inner/**", path)) {
             ServerHttpResponse response = exchange.getResponse();
             return out(response, ResultCodeEnum.PERMISSION);
         }
 
-        //api接口，异步请求，校验用户必须登录
-        if(antPathMatcher.match("/api/**/auth/**", path)) {
+        //api接口需登录；admin为后台管理接口，此前缺失该拦截导致后台完全裸奔
+        boolean needLogin = antPathMatcher.match("/api/**/auth/**", path)
+                || (antPathMatcher.match("/admin/**", path) && !isAdminWhitelisted(path));
+        if (needLogin) {
             Long userId = this.getUserId(request);
             if (userId == null) {
+                log.warn("未授权访问被拦截，path：{}", path);
                 ServerHttpResponse response = exchange.getResponse();
                 return out(response, ResultCodeEnum.LOGIN_AUTH);
             }
+            // 网关已完成鉴权，将userId透传给下游服务，避免各微服务重复解析JWT。
+            // header() 为覆盖赋值语义，可防止客户端伪造同名请求头越权。
+            ServerHttpRequest authRequest = request.mutate()
+                    .header(USER_ID_HEADER, String.valueOf(userId))
+                    .build();
+            return chain.filter(exchange.mutate().request(authRequest).build());
         }
         return chain.filter(exchange);
     }
@@ -57,6 +90,13 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     @Override
     public int getOrder() {
         return 0;
+    }
+
+    /**
+     * 判断该后台路径是否在免登录白名单中
+     */
+    private boolean isAdminWhitelisted(String path) {
+        return ADMIN_WHITELIST.contains(path);
     }
 
     /**

@@ -34,6 +34,16 @@ public class UserInfo extends BaseEntity {
 	@TableField("phone")
 	private String phone;
 
+	/**
+	 * 后台登录口令（PBKDF2 哈希）
+	 *
+	 * <p>敏感字段：任何对外返回的 VO（如 UserInfoVo）都不要包含它，
+	 * 也不应在日志中打印。
+	 */
+	@Schema(description = "登录口令哈希")
+	@TableField("password")
+	private String password;
+
 	@Schema(description = "用户姓名")
 	@TableField("name")
 	private String name;

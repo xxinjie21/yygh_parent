@@ -2,7 +2,6 @@ package com.yygh.hosp.controller;
 
 import com.yygh.common.exception.YyghException;
 import com.yygh.common.result.Result;
-import com.yygh.common.utils.MD5;
 import com.yygh.dto.HospitalSetQueryDTO;
 import com.yygh.hosp.service.HospitalSetService;
 import com.yygh.model.hosp.HospitalSet;
@@ -15,8 +14,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.SecureRandom;
+import java.util.HexFormat;
 import java.util.List;
-import java.util.Random;
 
 @Tag(name = "医院设置管理")
 @RestController
@@ -28,6 +28,12 @@ import java.util.Random;
  */
 public class HospitalSetController {
 
+    /** 敏感字段对外展示时的掩码 */
+    private static final String MASK = "******";
+
+    /** 密钥生成用的安全随机源 */
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     //注入service
     private final HospitalSetService hospitalSetService;
 
@@ -37,6 +43,10 @@ public class HospitalSetController {
     public Result findAllHospitalSet() {
         //调用service的方法
         List<HospitalSet> list = hospitalSetService.list();
+        // 签名密钥属于敏感凭据，对外返回时脱敏：一旦泄露，攻击者可伪造签名向平台上传/删除医院数据
+        if (list != null) {
+            list.forEach(item -> item.setSignKey(MASK));
+        }
         return Result.ok(list);
     }
 
@@ -74,16 +84,22 @@ public class HospitalSetController {
     public Result saveHospitalSet(@RequestBody HospitalSet hospitalSet) {
         //设置状态 1 使用 0 不能使用
         hospitalSet.setStatus(1);
-        //签名秘钥
-        Random random = new Random();
-        hospitalSet.setSignKey(MD5.encrypt(System.currentTimeMillis()+""+random.nextInt(1000)));
+        //签名秘钥：使用安全随机源生成，避免 java.util.Random 线性同余可预测导致密钥被推算
+        hospitalSet.setSignKey(generateSignKey());
         //调用service
         boolean save = hospitalSetService.save(hospitalSet);
-        if(save) {
+        if (save) {
             return Result.ok();
         } else {
             return Result.fail();
         }
+    }
+
+    /** 生成随机签名密钥（16字节安全随机数转十六进制） */
+    private String generateSignKey() {
+        byte[] bytes = new byte[16];
+        SECURE_RANDOM.nextBytes(bytes);
+        return HexFormat.of().formatHex(bytes);
     }
 
     //5 根据id获取医院设置
@@ -91,6 +107,10 @@ public class HospitalSetController {
     @GetMapping("getHospSet/{id}")
     public Result getHospSet(@PathVariable Long id) {
         HospitalSet hospitalSet = hospitalSetService.getById(id);
+        // 单条查询同样脱敏签名密钥
+        if (hospitalSet != null) {
+            hospitalSet.setSignKey(MASK);
+        }
         return Result.ok(hospitalSet);
     }
 

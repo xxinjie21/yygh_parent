@@ -44,6 +44,11 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
     private final DictFeignClient dictFeignClient;
     private final PatientService patientService;
 
+    /** 短信验证码在Redis中的 key 前缀 */
+    public static final String SMS_CODE_KEY_PREFIX = "sms:code:";
+    /** 短信验证码有效期（分钟） */
+    public static final long SMS_CODE_TTL_MINUTES = 5;
+
     //用户手机号登录接口
     @Override
     public Map<String, Object> loginUser(LoginVo loginVo) {
@@ -55,10 +60,13 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
             throw new YyghException(ResultCodeEnum.PARAM_ERROR);
         }
         //手机号校验判断是否与缓存中的数据一致
-        String codeInRedis = redisTemplate.opsForValue().get(phone);
+        String codeKey = SMS_CODE_KEY_PREFIX + phone;
+        String codeInRedis = redisTemplate.opsForValue().get(codeKey);
         if (StringUtils.isEmpty(codeInRedis) || !codeInRedis.equals(code)) {
             throw new YyghException(ResultCodeEnum.CODE_ERROR);
         }
+        // 校验通过后立即删除：保证验证码一次性使用，避免有效期内被重复利用或爆破
+        redisTemplate.delete(codeKey);
 
         //有值 说明用户是微信登陆了但没有绑定手机
         UserInfo userInfo = null;

@@ -66,6 +66,7 @@ CREATE TABLE `user_info`  (
   `nick_name` varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '昵称',
   `phone` varchar(11) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT '手机号',
   `name` varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '用户姓名',
+  `password` varchar(200) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '后台登录口令哈希（PBKDF2WithHmacSHA256+随机盐）',
   `certificates_type` varchar(3) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '证件类型',
   `certificates_no` varchar(30) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '证件编号',
   `certificates_url` varchar(200) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '证件路径',
@@ -81,9 +82,14 @@ CREATE TABLE `user_info`  (
 -- ----------------------------
 -- 表数据: user_info
 -- ----------------------------
-INSERT INTO `user_info` VALUES (8, NULL, NULL, '15588889999', 'yiyi', '身份证', '4545454554545454545', 'https://c-yygh.oss-cn-beijing.aliyuncs.com/2022/07/29/2fb8a8c3718f47a094670c3132a954a67.jpg', -1, 1, '2022-07-23 10:50:35', '2022-07-29 17:30:15', 0);
-INSERT INTO `user_info` VALUES (12, 'o3_SC57PmEG6NGpVS-M9PTq4ljGI', '书迟', '13886378533', '猫猫一号', '身份证', '111111111111111111', 'https://c-yygh.oss-cn-beijing.aliyuncs.com/2022/07/28/f91456c4d503425b8be7314e484241693.png', 1, 1, '2022-07-28 21:25:09', '2022-07-29 17:30:10', 0);
-INSERT INTO `user_info` VALUES (13, 'o3_SC51ZU7_hc3IpvsAmFuWsX3K0', '西南', '15997922750', 'cc', '身份证', '121212121212121212', 'https://c-yygh.oss-cn-beijing.aliyuncs.com/2022/08/12/2c5473c91c38484d9a5aac4ec1a34e4cbdd.jpg', 2, 1, '2022-08-12 10:18:46', '2022-08-12 10:18:46', 0);
+INSERT INTO `user_info` VALUES (8, NULL, NULL, '15588889999', 'yiyi', 'pbkdf2$100000$b2+cL3zO2sWkmH6rs3U0Yw==$CzBeNuF4+ej5whdQcFTkfYmX6DhgyLk2p46KQEryRgk=', '身份证', '4545454554545454545', 'https://c-yygh.oss-cn-beijing.aliyuncs.com/2022/07/29/2fb8a8c3718f47a094670c3132a954a67.jpg', -1, 1, '2022-07-23 10:50:35', '2022-07-29 17:30:15', 0);
+INSERT INTO `user_info` VALUES (12, 'o3_SC57PmEG6NGpVS-M9PTq4ljGI', '书迟', '13886378533', '猫猫一号', 'pbkdf2$100000$b2+cL3zO2sWkmH6rs3U0Yw==$CzBeNuF4+ej5whdQcFTkfYmX6DhgyLk2p46KQEryRgk=', '身份证', '111111111111111111', 'https://c-yygh.oss-cn-beijing.aliyuncs.com/2022/07/28/f91456c4d503425b8be7314e484241693.png', 1, 1, '2022-07-28 21:25:09', '2022-07-29 17:30:10', 0);
+INSERT INTO `user_info` VALUES (13, 'o3_SC51ZU7_hc3IpvsAmFuWsX3K0', '西南', '15997922750', 'cc', 'pbkdf2$100000$b2+cL3zO2sWkmH6rs3U0Yw==$CzBeNuF4+ej5whdQcFTkfYmX6DhgyLk2p46KQEryRgk=', '身份证', '121212121212121212', 'https://c-yygh.oss-cn-beijing.aliyuncs.com/2022/08/12/2c5473c91c38484d9a5aac4ec1a34e4cbdd.jpg', 2, 1, '2022-08-12 10:18:46', '2022-08-12 10:18:46', 0);
+
+-- 初始化后台登录口令
+-- 上面三个账号的初始口令均为 admin123（对应的 PBKDF2 哈希）。
+-- 【重要】正式环境部署后请立即修改，不要保留默认口令。
+UPDATE `user_info` SET `password` = 'pbkdf2$100000$b2+cL3zO2sWkmH6rs3U0Yw==$CzBeNuF4+ej5whdQcFTkfYmX6DhgyLk2p46KQEryRgk=' WHERE `password` IS NULL;
 
 -- ----------------------------
 -- 表结构: user_login_record

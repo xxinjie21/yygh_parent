@@ -7,8 +7,9 @@ import com.yygh.common.utils.HttpUtil;
 import com.yygh.common.utils.MD5;
 import lombok.extern.slf4j.Slf4j;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -20,22 +21,17 @@ import java.util.TreeMap;
 @Slf4j
 public class HttpRequestHelper {
 
-    public static void main(String[] args) {
-        Map<String, Object> paramMap = new HashMap<>();
-        paramMap.put("d", "4");
-        paramMap.put("b", "2");
-        paramMap.put("c", "3");
-        paramMap.put("a", "1");
-        log.info(getSign(paramMap, ""));
-    }
-
     /**
      * 请求数据获取签名
-     * @param paramMap
-     * @return
+     *
+     * <p><b>安全说明</b>：严禁打印参与签名的原始串，其中包含 signKey 等敏感凭据，
+     * 写入日志等同于密钥泄露。
+     *
+     * @param paramMap 参与签名的参数（本方法会移除其中已有的 sign 键）
+     * @return MD5 签名
      */
     public static String getSign(Map<String, Object> paramMap, String signKey) {
-        if(paramMap.containsKey("sign")) {
+        if (paramMap.containsKey("sign")) {
             paramMap.remove("sign");
         }
         TreeMap<String, Object> sorted = new TreeMap<>(paramMap);
@@ -44,24 +40,24 @@ public class HttpRequestHelper {
             str.append(param.getValue()).append("|");
         }
         str.append(signKey);
-        log.info("加密前：" + str.toString());
-        String md5Str = MD5.encrypt(str.toString());
-        log.info("加密后：" + md5Str);
-        return md5Str;
+        return MD5.encrypt(str.toString());
     }
 
     /**
      * 签名校验
-     * @param paramMap
-     * @return
+     *
+     * @return true 表示签名一致；缺少 sign 参数时返回 false，不抛异常
      */
     public static boolean isSignEquals(Map<String, Object> paramMap, String signKey) {
-        String sign = (String)paramMap.get("sign");
-        String md5Str = getSign(paramMap, signKey);
-        if(!sign.equals(md5Str)) {
+        String sign = (String) paramMap.get("sign");
+        if (sign == null || sign.isEmpty()) {
+            log.warn("请求缺少 sign 参数，签名校验失败");
             return false;
         }
-        return true;
+        String md5Str = getSign(paramMap, signKey);
+        // 使用恒定时间比较，降低时序攻击风险
+        return MessageDigest.isEqual(sign.getBytes(StandardCharsets.UTF_8),
+                md5Str.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -78,15 +74,16 @@ public class HttpRequestHelper {
      * @param url
      * @return
      */
-    public static JSONObject sendRequest(Map<String, Object> paramMap, String url){
+    public static JSONObject sendRequest(Map<String, Object> paramMap, String url) {
         String result = "";
         try {
             String json = JSONObject.toJSONString(paramMap);
-            log.info("--> 发送请求：post data {}", json);
-            byte[] reqData = json.getBytes("utf-8");
+            // 只打印参数名不打印参数值：请求体含患者身份证号、手机号等敏感信息，不应进入日志
+            log.info("--> 发送请求：url={}, params={}", url, paramMap.keySet());
+            byte[] reqData = json.getBytes(StandardCharsets.UTF_8);
             byte[] respdata = HttpUtil.doPost(url, reqData, "application/json;charset=utf-8");
-            result = new String(respdata);
-            log.info("--> 应答结果：result data {}", result);
+            result = new String(respdata, StandardCharsets.UTF_8);
+            log.info("--> 应答结果：{}", result);
         } catch (Exception ex) {
             log.error("HTTP请求失败，url: {}, error: {}", url, ex.getMessage(), ex);
             throw new YyghException("远程服务调用失败", ResultCodeEnum.FAIL.getCode());
