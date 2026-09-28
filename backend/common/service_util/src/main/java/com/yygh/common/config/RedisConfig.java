@@ -20,6 +20,9 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Redis配置类
@@ -84,9 +87,29 @@ public class RedisConfig {
     }
 
     /**
+     * 各业务缓存的基准有效期（秒）。
+     *
+     * <p>不同业务的过期时间刻意错开，避免大量 key 在同一时刻集中失效引发缓存雪崩。
+     */
+    private static final Map<String, Long> CACHE_TTL_SECONDS = Map.of(
+            "dict", 1800L,      // 数据字典变更极少
+            "hospital", 600L,   // 医院基础信息
+            "dept", 600L,       // 科室信息
+            "schedule", 300L    // 排班/号源变化频繁，过期时间最短
+    );
+
+    /** 未单独配置的缓存使用的默认有效期（秒） */
+    private static final long DEFAULT_TTL_SECONDS = 600L;
+
+    /** 叠加到基准有效期上的随机抖动上限（秒），打散同一业务 key 的过期时刻 */
+    private static final int TTL_JITTER_SECONDS = 120;
+
+    /**
      * 设置CacheManager缓存规则
-     * @param factory
-     * @return
+     *
+     * <p>此前 {@code entryTtl(600 + random(180))} 写在 defaultCacheConfig 里，
+     * 而随机数在 Bean 初始化时只计算一次 —— 结果是<b>所有 key 共用同一个 TTL</b>，
+     * 注释声称的随机化防雪崩实际没有生效。改为按 cacheName 分别配置，并各自叠加随机抖动。
      */
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory factory) {
@@ -103,15 +126,20 @@ public class RedisConfig {
                 ObjectMapper.DefaultTyping.NON_FINAL);
         jackson2JsonRedisSerializer.setObjectMapper(om);
 
-        // 配置序列化（解决乱码的问题）,过期时间600~780秒随机，防止缓存雪崩
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofSeconds(600 + new java.util.Random().nextInt(180)))
+        RedisCacheConfiguration baseConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(redisSerializer))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jackson2JsonRedisSerializer));
 
-        RedisCacheManager cacheManager = RedisCacheManager.builder(factory)
-                .cacheDefaults(config)
+        // 为每个业务缓存单独设置过期时间（各自叠加随机抖动）
+        Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
+        for (Map.Entry<String, Long> entry : CACHE_TTL_SECONDS.entrySet()) {
+            long ttl = entry.getValue() + ThreadLocalRandom.current().nextInt(TTL_JITTER_SECONDS);
+            cacheConfigurations.put(entry.getKey(), baseConfig.entryTtl(Duration.ofSeconds(ttl)));
+        }
+
+        return RedisCacheManager.builder(factory)
+                .cacheDefaults(baseConfig.entryTtl(Duration.ofSeconds(DEFAULT_TTL_SECONDS)))
+                .withInitialCacheConfigurations(cacheConfigurations)
                 .build();
-        return cacheManager;
     }
 }

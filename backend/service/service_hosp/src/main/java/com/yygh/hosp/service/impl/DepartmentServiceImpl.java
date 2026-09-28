@@ -1,5 +1,7 @@
 package com.yygh.hosp.service.impl;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.alibaba.fastjson.JSONObject;
 import com.yygh.dto.DepartmentQueryDTO;
 import com.yygh.dto.DepartmentSaveDTO;
@@ -12,7 +14,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
@@ -26,11 +27,20 @@ import java.util.stream.Collectors;
  * 科室服务实现类
  * @author XXJ
  */
-@Slf4j
 @RequiredArgsConstructor
 @Service
 public class DepartmentServiceImpl extends
         ServiceImpl<DepartmentMapper, Department> implements DepartmentService {
+    /**
+     * 显式声明 slf4j 日志对象，遮蔽父类 ServiceImpl 继承来的 ibatis Log。
+     *
+     * <p>为什么不能直接依赖 @Slf4j：MyBatis-Plus 的 ServiceImpl 中有一个
+     * <code>protected final org.apache.ibatis.logging.Log log</code> 字段，
+     * Lombok 发现父类已存在同名 log 时会跳过生成，导致此处的 log 是 ibatis 的 Log 实现，
+     * 它没有 info(String, Object...) 这类占位符重载，使用占位符打日志会直接编译失败。
+     */
+    private static final Logger log = LoggerFactory.getLogger(DepartmentServiceImpl.class);
+
 
     private final DepartmentMapper departmentMapper;
 

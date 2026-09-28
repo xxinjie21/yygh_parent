@@ -1,5 +1,7 @@
 package com.yygh.hosp.service.impl;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.alibaba.fastjson.JSONObject;
 import com.yygh.cmn.client.DictFeignClient;
 import com.yygh.common.cache.CacheBreakdownUtil;
@@ -15,9 +17,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -28,11 +29,20 @@ import java.util.stream.Collectors;
  * 医院服务实现类
  * @author XXJ
  */
-@Slf4j
 @RequiredArgsConstructor
 @Service
 public class HospitalServiceImpl extends
         ServiceImpl<HospitalMapper, Hospital> implements HospitalService {
+    /**
+     * 显式声明 slf4j 日志对象，遮蔽父类 ServiceImpl 继承来的 ibatis Log。
+     *
+     * <p>为什么不能直接依赖 @Slf4j：MyBatis-Plus 的 ServiceImpl 中有一个
+     * <code>protected final org.apache.ibatis.logging.Log log</code> 字段，
+     * Lombok 发现父类已存在同名 log 时会跳过生成，导致此处的 log 是 ibatis 的 Log 实现，
+     * 它没有 info(String, Object...) 这类占位符重载，使用占位符打日志会直接编译失败。
+     */
+    private static final Logger log = LoggerFactory.getLogger(HospitalServiceImpl.class);
+
 
     private final HospitalMapper hospitalMapper;
 
@@ -40,9 +50,20 @@ public class HospitalServiceImpl extends
 
     private final CacheBreakdownUtil cacheBreakdownUtil;
 
+    private final StringRedisTemplate stringRedisTemplate;
+
+    /**
+     * 医院详情缓存 key 前缀
+     *
+     * <p>必须与 {@link #getByHoscode(String)} 中 CacheBreakdownUtil 写入的 key 完全一致。
+     * 此前这里使用 {@code @CacheEvict(value="hospital")} 删除，它实际删的是 Spring Cache 的
+     * {@code hospital::xxx}（双冒号），而数据存在 {@code hospital:xxx}（单冒号），
+     * 两套机制互不相干，导致医院信息更新后缓存最长要等 10 分钟逻辑过期才生效。
+     */
+    private static final String HOSPITAL_CACHE_KEY_PREFIX = "hospital:";
+
     // 上传医院信息
     @Override
-    @CacheEvict(value = "hospital", key = "#hospitalSaveDTO.hoscode")
     public void save(HospitalSaveDTO hospitalSaveDTO) {
         // 把DTO转换为Hospital对象
         String mapString = JSONObject.toJSONString(hospitalSaveDTO);
@@ -69,6 +90,16 @@ public class HospitalServiceImpl extends
             hospital.setIsDeleted(0);
             baseMapper.insert(hospital);
             log.info("医院信息新增成功，医院编号：{}，名称：{}", hoscode, hospital.getHosname());
+        }
+        evictHospitalCache(hoscode);
+    }
+
+    /**
+     * 删除医院详情缓存（逻辑过期方案的缓存需要显式删除才能快速生效）
+     */
+    private void evictHospitalCache(String hoscode) {
+        if (hoscode != null && !hoscode.isEmpty()) {
+            stringRedisTemplate.delete(HOSPITAL_CACHE_KEY_PREFIX + hoscode);
         }
     }
 
@@ -135,6 +166,8 @@ public class HospitalServiceImpl extends
         hospital.setStatus(status);
         hospital.setUpdateTime(new Date());
         baseMapper.updateById(hospital);
+        // 上下线状态直接影响前台展示，需同步失效缓存
+        evictHospitalCache(hospital.getHoscode());
         log.info("医院状态更新成功，id：{}，新状态：{}", id, status);
     }
 

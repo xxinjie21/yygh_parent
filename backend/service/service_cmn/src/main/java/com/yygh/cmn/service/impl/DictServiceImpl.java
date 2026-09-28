@@ -1,5 +1,7 @@
 package com.yygh.cmn.service.impl;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.util.StringUtils;
 import com.yygh.cmn.listener.DictListener;
@@ -17,7 +19,6 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
@@ -25,13 +26,22 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-@Slf4j
 @Service
 /**
  * 数据字典服务实现类
  * @author XXJ
  */
 public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements DictService {
+    /**
+     * 显式声明 slf4j 日志对象，遮蔽父类 ServiceImpl 继承来的 ibatis Log。
+     *
+     * <p>为什么不能直接依赖 @Slf4j：MyBatis-Plus 的 ServiceImpl 中有一个
+     * <code>protected final org.apache.ibatis.logging.Log log</code> 字段，
+     * Lombok 发现父类已存在同名 log 时会跳过生成，导致此处的 log 是 ibatis 的 Log 实现，
+     * 它没有 info(String, Object...) 这类占位符重载，使用占位符打日志会直接编译失败。
+     */
+    private static final Logger log = LoggerFactory.getLogger(DictServiceImpl.class);
+
 
     //根据数据id查询子数据列表
     @Cacheable(value = "dict", keyGenerator = "keyGenerator")
